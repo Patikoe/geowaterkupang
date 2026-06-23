@@ -235,3 +235,5 @@ with tabs[4]:
     > 3. Mewajibkan peninjauan ulang draf Rencana Tata Ruang Wilayah (RTRW) guna membatasi aktivitas ekstraktif industri masif gamping pada sub-zonasi yang memiliki skor kerentanan tinggi.
     """
     st.markdown(naskah_draft)
+    st.markdown("---")
+st.caption("🛡️ **GeoWater-IQ v1.0** — *Dalam Pengawasan & Pemeliharaan Teknis oleh: B. Pati Kondanglimu, ST. Metodologi perhitungan divalidasi berdasarkan Kepmen LH 115/2003.*")
