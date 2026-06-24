@@ -1,4 +1,4 @@
-patikoe/geowaterkupangimport streamlit as tf
+import streamlit as st
 import pandas as pd
 import numpy as np
 import folium
@@ -27,7 +27,6 @@ BAKU_MUTU = {
 # 3. FUNGSI LOGIKA HITUNG INDEKS PENCEMARAN (Kepmen LH 115/2003)
 def hitung_ip(row, kriteria):
     sub_indices = []
-    # Evaluasi pH
     if row['pH'] < kriteria['pH_min']:
         sub_indices.append((kriteria['pH_min'] - row['pH']) / (kriteria['pH_min'] - 4.0))
     elif row['pH'] > kriteria['pH_max']:
@@ -35,11 +34,9 @@ def hitung_ip(row, kriteria):
     else:
         sub_indices.append(0.0)
         
-    # Evaluasi parameter umum (BOD, COD, Nitrat, Kesadahan)
     for param in ['BOD', 'COD', 'Nitrat', 'Kesadahan']:
         sub_indices.append(row[param] / kriteria[param])
         
-    # Evaluasi DO (Kebalikan)
     if row['DO'] >= kriteria['DO_min']:
         sub_indices.append(0.0)
     else:
@@ -66,7 +63,6 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("📥 Fitur 1: Unggah Data Batch (Excel)")
 uploaded_file = st.sidebar.file_uploader("Unggah Tabel Sampel Lapangan (.xlsx)", type=["xlsx"])
 
-# CONTOH DOWNLOAD TEMPLATE EXCEL UNTUK USER
 template_data = {
     'Nama_Sumur': ['Sumur Warga Alak 01', 'Sumur Pantau 02'],
     'Latitude': [-10.1650, -10.1720],
@@ -90,19 +86,16 @@ if uploaded_file is not None:
     try:
         df = pd.read_excel(uploaded_file)
         
-        # Eksekusi kalkulasi IP untuk seluruh baris data sampel
         df['Indeks_Pencemaran'] = df.apply(lambda r: hitung_ip(r, kriteria_terpilih), axis=1)
         df['Status_Mutu'] = df['Indeks_Pencemaran'].apply(lambda x: evaluasi_status(x)[0])
         df['Penanda_Warna'] = df['Indeks_Pencemaran'].apply(lambda x: evaluasi_status(x)[1])
         
-        # Penilaian Kerentanan Spasial Karst Alak
         def nilai_kerentanan(jarak):
             if jarak <= 50: return "Sangat Tinggi (Zona Kritis Karst)", "🔴"
             elif jarak <= 150: return "Sedang-Tinggi", "🟠"
             else: return "Relatif Aman/Rendah", "🟢"
         df['Kerentanan_Karst'] = df['Jarak_Ke_Ponor_Meter'].apply(lambda x: nilai_kerentanan(x)[0])
 
-        # TAMPILAN DASHBOARD UTAMA
         col1, col2 = st.columns([3, 2])
         
         with col1:
@@ -122,11 +115,9 @@ if uploaded_file is not None:
         st.subheader("🗺️ Visualisasi Sistem Informasi Geografis (Web-GIS) Kecamatan Alak")
         st.write("Peta interaktif di bawah mendeteksi koordinat riil dan menunjukkan zonasi kerentanan air berdasarkan penanda spasial.")
         
-        # Set pusat peta di Kecamatan Alak, Kupang
         map_center = [df['Latitude'].mean(), df['Longitude'].mean()]
         m = folium.Map(location=map_center, zoom_start=14, control_scale=True)
         
-        # Tambahkan pilihan basemap satelit
         folium.TileLayer(
             tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             attr='Esri',
@@ -176,7 +167,6 @@ if uploaded_file is not None:
             doc = SimpleDocTemplate(buffer_pdf, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
             styles = getSampleStyleSheet()
             
-            # Custom Style
             title_style = ParagraphStyle('Judul', parent=styles['Heading1'], fontSize=16, leading=20, textColor=colors.HexColor('#1A365D'), alignment=1)
             meta_style = ParagraphStyle('Meta', parent=styles['Normal'], fontSize=9, leading=12, textColor=colors.gray, alignment=1)
             normal_style = ParagraphStyle('NormalCustom', parent=styles['Normal'], fontSize=10, leading=14)
@@ -190,7 +180,6 @@ if uploaded_file is not None:
             elements.append(Paragraph(p_intro, normal_style))
             elements.append(Spacer(1, 12))
             
-            # Buat Tabel Ringkasan untuk PDF
             tabel_data = [["Nama Sumur", "Jarak Ponor (m)", "Skor IP", "Status Mutu", "Kerentanan Spasial"]]
             for _, r in data_frame.iterrows():
                 tabel_data.append([r['Nama_Sumur'], str(r['Jarak_Ke_Ponor_Meter']), str(r['Indeks_Pencemaran']), r['Status_Mutu'], r['Kerentanan_Karst']])
