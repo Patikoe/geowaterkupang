@@ -1,239 +1,227 @@
-import streamlit as st
+patikoe/geowaterkupangimport streamlit as tf
 import pandas as pd
 import numpy as np
-import math
+import folium
+from streamlit_folium import st_folium
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 
-# Set Konfigurasi Halaman Dashboard
-st.set_page_config(page_title="GeoWater-IQ: Sistem Terintegrasi Kualitas Air", layout="wide")
+# 1. KONFIGURASI HALAMAN UTAMA
+st.set_page_config(page_title="GeoWater-IQ Web-GIS", layout="wide", page_icon="💧")
 
-st.title("🌊 GeoWater-IQ")
-st.subheader("Sistem Informasi Hidro-Karst & Analisis Kualitas Air Terpadu")
-st.write("Aplikasi Multifungsi Analisis Mutu, Peruntukan, Kerentanan Karst, dan Rekomendasi Kebijakan Air.")
-st.markdown("---")
+st.title("💧 GeoWater-IQ v2.0 (Sistem Web-GIS Terintegrasi)")
+st.subheader("Analisis Kualitas Air, Kerentanan Karst, & Rekomendasi Tata Ruang Kecamatan Alak, Kota Kupang")
+st.write("Sistem Pemantauan Lingkungan Digital — Pengawasan Teknis: B. Pati Kondanglimu, ST.")
 
-# ==========================================
-# SIDEBAR: INPUT DATA & PARAMETER
-# ==========================================
-st.sidebar.header("📥 Input Data Kualitas Air")
-sample_name = st.sidebar.text_input("Nama Titik / Lokasi Sampel", "Sumur Gali Alak - Titik 09")
-kelurahan = st.sidebar.selectbox("Kelurahan", ["Alak", "Nunbaun Sabu", "Namosain", "Batuplat", "Penkase Oeleta", "Manutapen"])
+# 2. DATABASE BAKU MUTU REGIONAL (PP No. 22 Tahun 2021)
+BAKU_MUTU = {
+    "Kelas 1 (Air Minum/Domestik)": {"pH_min": 6.0, "pH_max": 9.0, "BOD": 2.0, "COD": 10.0, "DO_min": 6.0, "Nitrat": 10.0, "Kesadahan": 500.0},
+    "Kelas 2 (Prasarana Rekreasi Air)": {"pH_min": 6.0, "pH_max": 9.0, "BOD": 3.0, "COD": 25.0, "DO_min": 4.0, "Nitrat": 10.0, "Kesadahan": 800.0},
+    "Kelas 3 (Budidaya Ikan & Peternakan)": {"pH_min": 6.0, "pH_max": 9.0, "BOD": 6.0, "COD": 40.0, "DO_min": 3.0, "Nitrat": 20.0, "Kesadahan": 1000.0},
+    "Kelas 4 (Irigasi Pertanian Gamping)": {"pH_min": 6.0, "pH_max": 9.0, "BOD": 12.0, "COD": 80.0, "DO_min": 0.0, "Nitrat": 20.0, "Kesadahan": 1200.0}
+}
 
-st.sidebar.markdown("### 🔬 Hasil Pengujian Laboratorium")
-ph = st.sidebar.slider("pH Air", 0.0, 14.0, 7.4, 0.1)
-tds = st.sidebar.number_input("TDS (mg/L)", value=710)
-kesadahan = st.sidebar.number_input("Kesadahan (CaCO3 dalam mg/L)", value=520)
-coliform = st.sidebar.number_input("Total Coliform (CFU/100ml)", value=35)
-bod = st.sidebar.number_input("BOD (mg/L)", value=6.5)
-cod = st.sidebar.number_input("COD (mg/L)", value=22.0)
-nitrat = st.sidebar.number_input("Nitrat (NO3-N dalam mg/L)", value=12.5)
-
-st.sidebar.markdown("### 🪨 Parameter Hidrogeologi & Spasial (Karst)")
-jarak_ponor = st.sidebar.number_input("Jarak ke Ponor / Sinkhole terdekat (Meter)", value=85)
-kedalaman_air = st.sidebar.number_input("Kedalaman Muka Air Tanah (Meter)", value=15)
-
-# ==========================================
-# CORE ENGINE: PERHITUNGAN & PROSES
-# ==========================================
-
-# 1. Perhitungan Indeks Pencemaran (IP) - [MODUL 1]
-# Baku Mutu Kelas 2 (PP 22/2021 & Permenkes Sanitasi)
-L_ph_min, L_ph_max = 6.5, 8.5
-L_tds = 1000.0
-L_kesadahan = 500.0
-L_coliform = 50.0
-
-# Hitung Rasio Ci/Li
-r_ph = 1.0 if L_ph_min <= ph <= L_ph_max else max(L_ph_min/ph, ph/L_ph_max)
-r_tds = tds / L_tds
-r_kesadahan = kesadahan / L_kesadahan
-r_coliform = coliform / L_coliform
-
-ratios = [r_ph, r_tds, r_kesadahan, r_coliform]
-ratios_adjusted = []
-
-for r in ratios:
-    if r > 1.0:
-        r_adj = 1.0 + 5.0 * math.log(r)
+# 3. FUNGSI LOGIKA HITUNG INDEKS PENCEMARAN (Kepmen LH 115/2003)
+def hitung_ip(row, kriteria):
+    sub_indices = []
+    # Evaluasi pH
+    if row['pH'] < kriteria['pH_min']:
+        sub_indices.append((kriteria['pH_min'] - row['pH']) / (kriteria['pH_min'] - 4.0))
+    elif row['pH'] > kriteria['pH_max']:
+        sub_indices.append((row['pH'] - kriteria['pH_max']) / (14.0 - kriteria['pH_max']))
     else:
-        r_adj = r
-    ratios_adjusted.append(r_adj)
-
-r_max = max(ratios_adjusted)
-r_avg = sum(ratios_adjusted) / len(ratios_adjusted)
-ip_score = math.sqrt((r_max**2 + r_avg**2) / 2.0)
-
-if ip_score <= 1.0:
-    status_mutu = "Memenuhi Baku Mutu (Baik)"
-    color_status = "green"
-elif ip_score <= 5.0:
-    status_mutu = "Tercemar Ringan"
-    color_status = "orange"
-elif ip_score <= 10.0:
-    status_mutu = "Tercemar Sedang"
-    color_status = "red"
-else:
-    status_mutu = "Tercemar Berat"
-    color_status = "purple"
-
-# Indeks Kualitas Air (IKA) Simp. Skala 0-100
-ika_score = max(0, min(100, int(100 - (ip_score * 8))))
-
-# 2. Perhitungan Kerentanan Spasial DRASTIC & Karst - [MODUL 4 & 5]
-# Modifikasi sederhana indeks kerentanan berbasis parameter input
-drastic_score = (kedalaman_air * 2) + (5 if jarak_ponor < 100 else 2)
-if jarak_ponor < 100:
-    kerentanan_status = "Sangat Tinggi (Zona Kerentanan Karst Akut)"
-    color_vun = "red"
-    travel_time = "Cepat (< 24 Jam) via Porositas Sekunder"
-elif jarak_ponor < 500:
-    kerentanan_status = "Sedang"
-    color_vun = "orange"
-    travel_time = "Moderat (2 - 5 Hari)"
-else:
-    kerentanan_status = "Rendah"
-    color_vun = "green"
-    travel_time = "Lambat (> 10 Hari)"
-
-
-# ==========================================
-# LAYOUT UTAMA DASHBOARD INTERAKTIF
-# ==========================================
-
-tabs = st.tabs([
-    "🎯 1 & 2. Status Mutu & Kelayakan", 
-    "🔍 3. Sumber Pencemar", 
-    "🗺️ 4 & 5. Kerentanan & Zonasi Spasial", 
-    "📉 6. Daya Tampung (DTBP)", 
-    "📋 7. Rekomendasi & Kebijakan"
-])
-
-# ------------------------------------------
-# TAB 1 & 2: STATUS MUTU & KELAYAKAN FUNGSI
-# ------------------------------------------
-with tabs[0]:
-    st.header("Analisis Status Mutu dan Fungsi Peruntukan Air")
-    st.write(f"**Lokasi Pengamatan:** {sample_name} (Kelurahan {kelurahan})")
-    
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Indeks Pencemaran (IP)", f"{ip_score:.3f}")
-    col2.markdown(f"**Status Mutu Air:** <span style='color:{color_status}; font-size:20px; font-weight:bold;'>{status_mutu}</span>", unsafe_allow_html=True)
-    col3.metric("Indeks Kualitas Air (IKA)", f"{ika_score} / 100")
-    
-    st.markdown("---")
-    st.subheader("📋 Matriks Kelayakan Fungsi Peruntukan Air")
-    
-    # Logika Kelayakan Sektoral
-    layak_minum = "LAYAK (Perlu Rebus/Filtrasi)" if (coliform < 50 and kesadahan < 500) else "TIDAK LAYAK (Kandungan Kapur/Bakteri Tinggi)"
-    layak_irigasi = "LAYAK (Salinitas & Kimiawi Stabil)" if tds < 1000 else "TIDAK LAYAK (Risiko Salinisasi Tanah)"
-    layak_perikanan = "LAYAK" if (6.5 <= ph <= 8.5 and cod < 25) else "TIDAK LAYAK (Resiko Defisit Oksigen/Fluktuasi pH)"
-    
-    df_kelayakan = pd.DataFrame({
-        "Sektor Peruntukan": ["Air Minum & Domestik", "Pertanian & Irigasi", "Perikanan & Peternakan"],
-        "Status Kelayakan": [layak_minum, list_irigasi := layak_irigasi, layak_perikanan],
-        "Parameter Pembatas Utama": [
-            "Total Coliform & Kesadahan Karst" if layak_minum != "LAYAK" else "Tidak ada",
-            "TDS / Salinitas Batuan" if layak_irigasi != "LAYAK" else "Tidak ada",
-            "Kadar COD dan Derajat Keasaman" if layak_perikanan != "LAYAK" else "Tidak ada"
-        ]
-    })
-    st.table(df_kelayakan)
-
-# ------------------------------------------
-# TAB 3: IDENTIFIKASI SUMBER PENCEMAR
-# ------------------------------------------
-with tabs[1]:
-    st.header("Fingerprinting & Identifikasi Sumber Pencemar")
-    st.write("Sistem mendeteksi fluktuasi klaster parameter dominan untuk melacak asal polutan:")
-    
-    pencemaran_log = []
-    if coliform > 10 or bod > 5:
-        pencemaran_log.append("🚨 **Pencemaran Domestik Tinggi:** Indikasi rembesan limbah rumah tangga / *septic tank* padat penduduk akibat jarak sumur yang terlalu dekat.")
-    if nitrat > 10:
-        pencemaran_log.append("🚜 **Pencemaran Pertanian:** Terdeteksi akumulasi senyawa Nitrat ($NO_3$). Kemungkinan akibat limpasan pupuk atau kotoran ternak dari permukaan.")
-    if kesadahan > 400 or tds > 500:
-        pencemaran_log.append("🪨 **Karakteristik Latar Alami (Lithogenic):** Tingginya unsur Kalsium dan magnesium murni bersumber dari pelarutan batuan kapur Formasi Karst Alak.")
+        sub_indices.append(0.0)
         
-    if pencemaran_log:
-        for log in pencemaran_log:
-            st.markdown(log)
+    # Evaluasi parameter umum (BOD, COD, Nitrat, Kesadahan)
+    for param in ['BOD', 'COD', 'Nitrat', 'Kesadahan']:
+        sub_indices.append(row[param] / kriteria[param])
+        
+    # Evaluasi DO (Kebalikan)
+    if row['DO'] >= kriteria['DO_min']:
+        sub_indices.append(0.0)
     else:
-        st.success("Belum terdeteksi adanya anomali aktivitas antropogenik yang masif.")
-
-# ------------------------------------------
-# TAB 4 & 5: KERENTANAN & ZONASI SPASIAL
-# ------------------------------------------
-with tabs[2]:
-    st.header("Pemetaan Kerentanan Air Tanah & Zonasi Ruang Permukaan")
-    
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        st.subheader("🛡️ Kerentanan Bawah Permukaan (Metode Karst-DRASTIC)")
-        st.markdown(f"Status Kerentanan: <span style='color:{color_vun}; font-size:18px; font-weight:bold;'>{kerentanan_status}</span>", unsafe_allow_html=True)
-        st.write(f"**Waktu Respons Perjalanan Polutan (Travel Time):** {travel_time}")
-        st.info("Kawasan karst memiliki pori sekunder (rekahan gua) yang bertindak sebagai jalur pintas polutan (*contaminant shortcuts*) tanpa filtrasi tanah alami.")
+        sub_indices.append((kriteria['DO_min'] - row['DO']) / kriteria['DO_min'])
         
-    with col_g2:
-        st.subheader("🗺️ Matriks Arahan Pemanfaatan Lahan (Zonasi)")
-        if jarak_ponor < 100:
-            st.error("**ZONA LINDUNG MUTLAK (ZONA INTI KONSERVASI)**\nDilarang mendirikan bangunan, tangki septik baru, kawasan industri, ataupun aktivitas penambangan batu kapur dalam radius ini.")
+    n_max = np.max(sub_indices)
+    n_rerata = np.mean(sub_indices)
+    
+    ip = np.sqrt((n_max**2 + n_rerata**2) / 2)
+    return round(ip, 2)
+
+def evaluasi_status(ip):
+    if ip <= 1.0: return "Memenuhi Baku Mutu", "🟢"
+    elif ip <= 5.0: return "Cemar Ringan", "🟡"
+    elif ip <= 10.0: return "Cemar Sedang", "🟠"
+    else: return "Cemar Berat", "🔴"
+
+# 4. SIDEBAR PANEL CONTROL
+st.sidebar.header("🛠️ Panel Kendali Sistem")
+pilihan_kelas = st.sidebar.selectbox("Pilih Kategori Peruntukan Air (PP 22/2021):", list(BAKU_MUTU.keys()))
+kriteria_terpilih = BAKU_MUTU[pilihan_kelas]
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("📥 Fitur 1: Unggah Data Batch (Excel)")
+uploaded_file = st.sidebar.file_uploader("Unggah Tabel Sampel Lapangan (.xlsx)", type=["xlsx"])
+
+# CONTOH DOWNLOAD TEMPLATE EXCEL UNTUK USER
+template_data = {
+    'Nama_Sumur': ['Sumur Warga Alak 01', 'Sumur Pantau 02'],
+    'Latitude': [-10.1650, -10.1720],
+    'Longitude': [123.5520, 123.5480],
+    'Jarak_Ke_Ponor_Meter': [120, 45],
+    'pH': [7.2, 6.8],
+    'BOD': [1.5, 3.2],
+    'COD': [8.0, 28.0],
+    'DO': [6.2, 4.1],
+    'Nitrat': [4.5, 12.1],
+    'Kesadahan': [320.0, 550.0]
+}
+df_template = pd.DataFrame(template_data)
+output_template = io.BytesIO()
+with pd.ExcelWriter(output_template, engine='openpyxl') as writer:
+    df_template.to_excel(writer, index=False, sheet_name='Sheet1')
+st.sidebar.download_button(label="📁 Unduh Template Excel Lapangan", data=output_template.getvalue(), file_name="template_geowater_alak.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# 5. PEMROSESAN UTAMA APLIKASI
+if uploaded_file is not None:
+    try:
+        df = pd.read_excel(uploaded_file)
+        
+        # Eksekusi kalkulasi IP untuk seluruh baris data sampel
+        df['Indeks_Pencemaran'] = df.apply(lambda r: hitung_ip(r, kriteria_terpilih), axis=1)
+        df['Status_Mutu'] = df['Indeks_Pencemaran'].apply(lambda x: evaluasi_status(x)[0])
+        df['Penanda_Warna'] = df['Indeks_Pencemaran'].apply(lambda x: evaluasi_status(x)[1])
+        
+        # Penilaian Kerentanan Spasial Karst Alak
+        def nilai_kerentanan(jarak):
+            if jarak <= 50: return "Sangat Tinggi (Zona Kritis Karst)", "🔴"
+            elif jarak <= 150: return "Sedang-Tinggi", "🟠"
+            else: return "Relatif Aman/Rendah", "🟢"
+        df['Kerentanan_Karst'] = df['Jarak_Ke_Ponor_Meter'].apply(lambda x: nilai_kerentanan(x)[0])
+
+        # TAMPILAN DASHBOARD UTAMA
+        col1, col2 = st.columns([3, 2])
+        
+        with col1:
+            st.subheader("📊 Hasil Pemrosesan Logika Kimia Air & Kerentanan Spasial")
+            st.dataframe(df[['Nama_Sumur', 'Jarak_Ke_Ponor_Meter', 'Indeks_Pencemaran', 'Status_Mutu', 'Kerentanan_Karst']])
+            
+        with col2:
+            st.subheader("📉 Ringkasan Kondisi Lapangan")
+            total_titik = len(df)
+            cemar_total = len(df[df['Indeks_Pencemaran'] > 1.0])
+            st.metric("Total Sampel Sumur Dipantau", f"{total_titik} Titik")
+            st.metric("Titik Terindikasi Melebihi Baku Mutu", f"{cemar_total} Titik", delta=f"{round((cemar_total/total_titik)*100, 1)}% Risiko", delta_color="inverse")
+
+        st.markdown("---")
+        
+        # 6. FITUR 2: INTEGRASI PEMETAAN INTERAKTIF (WEB-GIS INTERAKTIF)
+        st.subheader("🗺️ Visualisasi Sistem Informasi Geografis (Web-GIS) Kecamatan Alak")
+        st.write("Peta interaktif di bawah mendeteksi koordinat riil dan menunjukkan zonasi kerentanan air berdasarkan penanda spasial.")
+        
+        # Set pusat peta di Kecamatan Alak, Kupang
+        map_center = [df['Latitude'].mean(), df['Longitude'].mean()]
+        m = folium.Map(location=map_center, zoom_start=14, control_scale=True)
+        
+        # Tambahkan pilihan basemap satelit
+        folium.TileLayer(
+            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            attr='Esri',
+            name='Citra Satelit Gamping',
+            overlay=False,
+            control=True
+        ).add_to(m)
+        folium.TileLayer('openstreetmap', name='Peta Jalan Standar').add_to(m)
+        folium.LayerControl().add_to(m)
+
+        for _, row in df.iterrows():
+            warna_map = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
+            popup_text = f"""
+            <div style='font-family: Arial, sans-serif; width: 220px;'>
+                <b>📌 {row['Nama_Sumur']}</b><br>
+                <hr style='margin: 4px 0;'>
+                <b>Indeks Pencemaran:</b> {row['Indeks_Pencemaran']}<br>
+                <b>Status Mutu:</b> {row['Status_Mutu']}<br>
+                <b>Kerentanan Karst:</b> {row['Kerentanan_Karst']}<br>
+                <b>Jarak ke Ponor:</b> {row['Jarak_Ke_Ponor_Meter']} meter
+            </div>
+            """
+            folium.Marker(
+                location=[row['Latitude'], row['Longitude']],
+                popup=folium.Popup(popup_text, max_width=250),
+                icon=folium.Icon(color=warna_map, icon='info-sign')
+            ).add_to(m)
+            
+        st_folium(m, width=1100, height=500)
+
+        st.markdown("---")
+        
+        # 7. REKOMENDASI TATA RUANG OTOMATIS BERDASARKAN HASIL DATA
+        st.subheader("📋 Rekomendasi Kebijakan Tata Ruang & Konservasi Kawasan")
+        rekomendasi_teks = ""
+        if df['Indeks_Pencemaran'].max() > 5.0 or df['Jarak_Ke_Ponor_Meter'].min() <= 50:
+            rekomendasi_teks = "⚠️ **Rekomendasi Utama (Proteksi Ketat):** Ditemukan titik air dengan tingkat pencemaran tinggi atau berada dekat struktur ponor/sinkhole kritis gamping Alak. Diperlukan penetapan zona penyangga (buffer zone) radius 100m dari ponor bebas dari aktivitas pembuangan limbah domestik maupun industri pertambangan. Pengetatan perizinan tata ruang wilayah karst Alak sangat mendesak dilakukan."
         else:
-            st.warning("**ZONA BUDIDAYA TERBATAS**\nAktivitas pembangunan harus memiliki pengolahan limbah kedap air tingkat lanjut (STP) untuk menghindari kebocoran akuifer.")
+            rekomendasi_teks = "✅ **Rekomendasi Utama (Preservasi Terkendali):** Kondisi kualitas air bawah tanah gamping terpantau stabil dalam rentang baku mutu peruntukan. Aktivitas tata ruang dapat dilanjutkan dengan skema pemantauan berkala setiap 6 bulan guna mendeteksi intrusi air laut atau rembesan kontaminan dini."
+        st.info(rekomendasi_teks)
 
-# ------------------------------------------
-# TAB 6: PEMODELAN DAYA TAMPUNG (DTBP)
-# ------------------------------------------
-with tabs[3]:
-    st.header("Pemodelan Daya Tampung Beban Pencemaran (DTBP)")
-    st.write("Analisis kuantitatif batas maksimal asimilasi polutan pada badan air penerima:")
-    
-    # Simulasi perhitungan DTBP sederhana untuk parameter BOD
-    beban_aktual = (bod * 1500) / 1000 # simulasi debit 1500 m3/hari
-    beban_maksimal = (5.0 * 1500) / 1000 # Baku mutu BOD kelas 2 = 5 mg/L
-    dtbp_sisa = beban_maksimal - beban_aktual
-    
-    col_d1, col_d2 = st.columns(2)
-    col_d1.metric("Beban Polutan Aktual Saat Ini", f"{beban_aktual:.2f} kg BOD/Hari")
-    
-    if dtbp_sisa > 0:
-        col_d2.metric("Sisa Alokasi Alokasi Beban yang Diizinkan", f"{dtbp_sisa:.2f} kg BOD/Hari", delta="Aman")
-        st.success("Badan air masih memiliki kapasitas asimilasi alami untuk menerima buangan limbah terkontrol.")
-    else:
-        col_d2.metric("Alokasi Beban Melebihi Batas (Defisit)", f"{dtbp_sisa:.2f} kg BOD/Hari", delta="Kritis", delta_color="inverse")
-        st.error("**Daya Tampung Terlampaui!** Pemerintah daerah harus melakukan moratorium izin pembuangan limbah cair baru di sub-daerah aliran air ini.")
+        # 8. FITUR 3: GENERATOR LAPORAN DIGITAL (PDF)
+        st.subheader("🖨️ Cetak Dokumen Output Hasil Validasi Lapangan")
+        
+        def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
+            buffer_pdf = io.BytesIO()
+            doc = SimpleDocTemplate(buffer_pdf, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+            styles = getSampleStyleSheet()
+            
+            # Custom Style
+            title_style = ParagraphStyle('Judul', parent=styles['Heading1'], fontSize=16, leading=20, textColor=colors.HexColor('#1A365D'), alignment=1)
+            meta_style = ParagraphStyle('Meta', parent=styles['Normal'], fontSize=9, leading=12, textColor=colors.gray, alignment=1)
+            normal_style = ParagraphStyle('NormalCustom', parent=styles['Normal'], fontSize=10, leading=14)
+            
+            elements = []
+            elements.append(Paragraph("<b>LAPORAN TEKNIS VALIDASI KUALITAS AIR & SPASIAL KARST (GEOWATER-IQ)</b>", title_style))
+            elements.append(Paragraph("Kecamatan Alak, Kota Kupang, Nusa Tenggara Timur<br>Pengawas Teknis Pembuat Aplikasi: B. Pati Kondanglimu, ST.", meta_style))
+            elements.append(Spacer(1, 15))
+            
+            p_intro = f"Laporan otomatis ini diterbitkan secara valid oleh sistem informasi lingkungan GeoWater-IQ v2.0 dengan mengacu pada simulasi standar mutu <b>PP No. 22 Tahun 2021 Kategori {kelas_mutu}</b> serta perhitungan Indeks Pencemaran berdasarkan <b>Kepmen LH No. 115 Tahun 2003</b>."
+            elements.append(Paragraph(p_intro, normal_style))
+            elements.append(Spacer(1, 12))
+            
+            # Buat Tabel Ringkasan untuk PDF
+            tabel_data = [["Nama Sumur", "Jarak Ponor (m)", "Skor IP", "Status Mutu", "Kerentanan Spasial"]]
+            for _, r in data_frame.iterrows():
+                tabel_data.append([r['Nama_Sumur'], str(r['Jarak_Ke_Ponor_Meter']), str(r['Indeks_Pencemaran']), r['Status_Mutu'], r['Kerentanan_Karst']])
+                
+            t = Table(tabel_data, colWidths=[130, 90, 60, 110, 130])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1A365D')),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,0), 10),
+                ('BOTTOMPADDING', (0,0), (-1,0), 6),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('FONTSIZE', (0,1), (-1,-1), 9),
+            ]))
+            elements.append(t)
+            elements.append(Spacer(1, 15))
+            
+            elements.append(Paragraph("<b>REKOMENDASI TATARUANG DAN KONSERVASI:</b>", ParagraphStyle('Sub', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
+            elements.append(Paragraph(teks_rekomendasi, normal_style))
+            
+            doc.build(elements)
+            return buffer_pdf.getvalue()
 
-# ------------------------------------------
-# TAB 7: REKOMENDASI TEKNIS & KEBIJAKAN
-# ------------------------------------------
-with tabs[4]:
-    st.header("📋 Ultimate Output: Rekomendasi Teknis, Pengelolaan, & Kebijakan")
-    
-    st.subheader("🔧 1. Desain Teknologi Sistem Pengolahan Air (Water Treatment)")
-    rekomendasi_teknis = []
-    if kesadahan > 500:
-        rekomendasi_teknis.append("* **Unit Penurun Kesadahan (Water Softener):** Memasang tabung penukar ion (*Ion Exchange Resin Kation*) untuk mengikat kandungan kapur ($Ca^{2+}$ dan $Mg^{2+}$) agar tidak memicu pembentukan kerak batu.")
-    if coliform > 0:
-        rekomendasi_teknis.append("* **Sistem Disinfeksi Sinar UV / Klorinasi Otomatis:** Untuk mensterilkan air dari paparan bakteri Coliform sebelum dialirkan ke jaringan distribusi rumah tangga.")
-    if tds > 500:
-        rekomendasi_teknis.append("* **Sistem Filtrasi Multi-Stage:** Pemasangan filter sedimen makro yang dipadukan dengan karbon aktif guna memperbaiki parameter estetika air (rasa dan bau).")
-        
-    if rekomendasi_teknis:
-        for rek in rekomendasi_teknis:
-            st.write(rek)
-    else:
-        st.write("* Air berada dalam kondisi prima alami. Cukup filtrasi sedimen standar.")
-        
-    st.markdown("---")
-    st.subheader("🏛️ 2. Dokumen Naskah Rekomendasi Regulasi Tata Ruang (BAPPEDA/DLH)")
-    
-    # Teks Otomatisasi Draft Legalitas
-    st.write(f"Berdasarkan analisis terintegrasi GeoWater-IQ pada lokasi **{sample_name}**, dirumuskan draf kebijakan sebagai berikut:")
-    naskah_draft = f"""
-    > **SURAT REKOMENDASI ILMIAH PENGELOLAAN HIDRO-KARST KOTA KUPANG**
-    > 
-    > 1. Menetapkan wilayah kelurahan **{kelurahan}** yang masuk ke dalam radius kerentanan radikal koridor gua/ponor sebagai **Kawasan Strategis Perlindungan Air Tanah**.
-    > 2. Menginstruksikan pembuatan **Jaringan Sumur Pantau (Groundwater Monitoring Network)** di area hulu (*up-gradient*) dan hilir (*down-gradient*) dari Kecamatan Alak untuk sistem peringatan dini polutan transmisi kilat.
-    > 3. Mewajibkan peninjauan ulang draf Rencana Tata Ruang Wilayah (RTRW) guna membatasi aktivitas ekstraktif industri masif gamping pada sub-zonasi yang memiliki skor kerentanan tinggi.
-    """
-    st.markdown(naskah_draft)
-    st.markdown("---")
-st.caption("🛡️ **GeoWater-IQ v1.0** — *Dalam Pengawasan & Pemeliharaan Teknis oleh: B. Pati Kondanglimu, ST. Metodologi perhitungan divalidasi berdasarkan Kepmen LH 115/2003.*")
+        pdf_data = buat_pdf(df, pilihan_kelas, rekomendasi_teks)
+        st.download_button(label="📥 Unduh Laporan Resmi (PDF)", data=pdf_data, file_name="Laporan_GeoWaterIQ_Alak.pdf", mime="application/pdf")
+
+    except Exception as e:
+        st.error(f"Gagal memproses file. Pastikan format kolom Excel Anda sudah sesuai dengan template contoh. Error: {e}")
+else:
+    st.info("💡 Hubungkan data lapangan Anda untuk mengaktifkan Web-GIS: Silakan unduh 'Template Excel Lapangan' di panel kiri, isi data kualitas air sumur hasil laboratorium, lalu unggah kembali ke panel tersebut.")
+
+st.markdown("---")
+st.caption("🛡️ **GeoWater-IQ v2.0** — *Dalam Pengawasan & Pemeliharaan Teknis oleh: B. Pati Kondanglimu, ST. Metodologi perhitungan & Web-GIS divalidasi berdasarkan Kepmen LH 115/2003 & PP 22/2021.*")
