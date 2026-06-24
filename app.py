@@ -173,7 +173,7 @@ if uploaded_file is not None:
             
             elements = []
             elements.append(Paragraph("<b>LAPORAN TEKNIS VALIDASI KUALITAS AIR & SPASIAL KARST (GEOWATER-IQ)</b>", title_style))
-            elements.append(Paragraph("Kecamatan Alak, Kota Kupang, Nusa Tenggara Timur<br>Pengawas Teknis Pembuat Aplikasi: B. Pati Kondanglimu, ST.", meta_style))
+            elements.append(Paragraph("Kecamatan Alak, Kota Kupang, Nusa Tenggara Timur<br/>Pengawas Teknis Pembuat Aplikasi: B. Pati Kondanglimu, ST.", meta_style))
             elements.append(Spacer(1, 15))
             
             p_intro = f"Laporan otomatis ini diterbitkan secara valid oleh sistem informasi lingkungan GeoWater-IQ v2.0 dengan mengacu pada simulasi standar mutu <b>PP No. 22 Tahun 2021 Kategori {kelas_mutu}</b> serta perhitungan Indeks Pencemaran berdasarkan <b>Kepmen LH No. 115 Tahun 2003</b>."
