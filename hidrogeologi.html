@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modul Hidrogeologi Karst NTT</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        :root {
+            --karst-bg: #F9F8F6;       /* Putih Tulang */
+            --karst-savana: #D4A373;   /* Cokelat Lahan Kering NTT */
+            --karst-accent: #1A5F7A;   /* Biru Air Bawah Tanah */
+            --karst-text: #2C3E50;     /* Abu-abu Gelap teks */
+        }
+        body { background-color: var(--karst-bg); color: var(--karst-text); font-family: sans-serif; }
+        .bg-karst-accent { background-color: var(--karst-accent); }
+        .bg-karst-savana { background-color: var(--karst-savana); }
+        .border-karst-savana { border-color: var(--karst-savana); }
+        .text-karst-accent { color: var(--karst-accent); }
+        .text-karst-savana { color: var(--karst-savana); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <nav class="max-w-4xl mx-auto mb-6 flex justify-between items-center p-4 bg-white rounded-lg shadow-sm">
+        <span class="font-bold text-karst-accent text-lg">GeoWater Kupang</span>
+        <div class="space-x-4 text-sm font-medium">
+            <a href="index.html" class="text-gray-500 hover:text-karst-savana">← Kembali ke Beranda Utama</a>
+        </div>
+    </nav>
+
+    <section class="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-md mb-8 border border-gray-100">
+        <div class="border-l-4 border-karst-savana pl-4 mb-6">
+            <h2 class="text-2xl font-bold">E-Library: Karst Lahan Kering NTT</h2>
+            <p class="text-xs text-gray-500">Daftar publikasi ilmiah, tesis, dan hasil review pengelolaan ekosistem karst.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase">Hidrogeologi</span>
+                <h3 class="text-sm font-bold mt-2">Analisis Karakteristik Akuifer Potensi Air Tanah Karst Lahan Kering NTT</h3>
+                <p class="text-[11px] text-gray-500 mt-1">Review Literatur Kawasan Sumba Timur & Kupang (2026)</p>
+                <div class="mt-4 flex gap-2">
+                    <a href="#" class="inline-flex items-center bg-karst-accent text-white px-3 py-1.5 rounded text-xs font-medium shadow-sm">Unduh PDF</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-md border border-gray-100">
+        <div class="flex items-center space-x-3 border-b-2 border-karst-savana pb-4 mb-6">
+            <div class="p-2 bg-karst-accent text-white rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold">Modul Perhitungan Hidrogeologi Karst</h2>
+                <p class="text-xs text-gray-500">Estimasi Neraca Air & Cadangan Akuifer Batuan Kapur</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 class="text-xs font-bold text-karst-accent uppercase tracking-wider mb-3">1. Neraca Air Sederhana</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">Curah Hujan Tahunan (P) — mm</label>
+                        <input type="number" id="inputP" placeholder="Contoh: 1200" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">Evapotranspirasi Aktual (ET) — mm</label>
+                        <input type="number" id="inputET" placeholder="Contoh: 1400" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:outline-none">
+                    </div>
+                    <button onclick="prosesNeracaAir()" class="w-full bg-karst-accent text-white py-2 rounded text-xs font-semibold shadow">Hitung Neraca Air</button>
+                </div>
+                <div id="resultNeraca" class="mt-3 p-3 bg-white border border-gray-100 rounded text-xs hidden"></div>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 class="text-xs font-bold text-karst-accent uppercase tracking-wider mb-3">2. Estimasi Volume Akuifer Karst</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">Luas Area Tangkapan (A) — m²</label>
+                        <input type="number" id="inputArea" placeholder="Contoh: 50000" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">Tebal Jenuh Akuifer (H) — meter</label>
+                        <input type="number" id="inputTebal" placeholder="Contoh: 25" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">Porositas Sekunder Batuan Karst (Sy)</label>
+                        <select id="inputPorositas" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:outline-none">
+                            <option value="0.02">2% (Karst Padat / Rekahan Rapat)</option>
+                            <option value="0.04" selected>4% (Standar Pengujian Karst NTT)</option>
+                            <option value="0.05">5% (Sistem Saluran/Lorong Goa Berkembang)</option>
+                        </select>
+                    </div>
+                    <button onclick="prosesAquifer()" class="w-full bg-karst-savana text-white py-2 rounded text-xs font-semibold shadow">Estimasi Potensi Air Tanah</button>
+                </div>
+                <div id="resultAquifer" class="mt-3 p-3 bg-white border border-gray-100 rounded text-xs hidden"></div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        function hitungNeracaAir(curahHujan, evapotranspirasi) {
+            const hasil = curahHujan - evapotranspirasi;
+            if (hasil < 0) {
+                return {
+                    nilai: Math.abs(hasil).toFixed(2),
+                    status: "Defisit Air (Kekeringan)",
+                    rekomendasi: "Tingkat evapotranspirasi tinggi. Diperlukan optimalisasi aquifer storage bawah permukaan."
+                };
+            } else {
+                return {
+                    nilai: hasil.toFixed(2),
+                    status: "Surplus Air (Potensi Infiltrasi)",
+                    rekomendasi: "Potensi tinggi untuk pengisian air tanah menuju sistem sungai bawah tanah."
+                };
+            }
+        }
+
+        function hitungAquiferStorage(luasAreaM2, tebalAkuiferM, porositasSekunder) {
+            const volumeAirM3 = luasAreaM2 * tebalAkuiferM * porositasSekunder;
+            const volumeAirLiter = volumeAirM3 * 1000;
+            return { volumeM3: volumeAirM3, volumeLiter: volumeAirLiter };
+        }
+
+        function prosesNeracaAir() {
+            const P = parseFloat(document.getElementById('inputP').value);
+            const ET = parseFloat(document.getElementById('inputET').value);
+            const boxHasil = document.getElementById('resultNeraca');
+            if (isNaN(P) || isNaN(ET)) { alert("Masukkan angka dengan benar."); return; }
+            const analisis = hitungNeracaAir(P, ET);
+            boxHasil.classList.remove('hidden');
+            boxHasil.innerHTML = `<p class="font-bold text-karst-accent">Hasil:</p><p>Selisih: <strong>${analisis.nilai} mm</strong></p><p>Status: <span class="bg-amber-100 px-1 rounded font-semibold">${analisis.status}</span></p>`;
+        }
+
+        function prosesAquifer() {
+            const area = parseFloat(document.getElementById('inputArea').value);
+            const tebal = parseFloat(document.getElementById('inputTebal').value);
+            const porositas = parseFloat(document.getElementById('inputPorositas').value);
+            const boxHasil = document.getElementById('resultAquifer');
+            if (isNaN(area) || isNaN(tebal)) { alert("Lengkapi data parameter."); return; }
+            const storage = hitungAquiferStorage(area, tebal, porositas);
+            boxHasil.classList.remove('hidden');
+            boxHasil.innerHTML = `<p class="font-bold text-karst-savana">Estimasi:</p><p>Volume: <strong>${storage.volumeM3.toLocaleString('id-ID')} m³</strong></p><p>Kapasitas: <strong>${storage.volumeLiter.toLocaleString('id-ID')} Liter</strong></p>`;
+        }
+    </script>
+</body>
+</html>
