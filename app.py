@@ -225,7 +225,7 @@ with menu_col:
     st.markdown("<br>", unsafe_allow_html=True)
     menu_pilihan = st.radio(
         "🧭 Navigasi Menu Dashboard:",
-        ["🗺️ Peta Utama & Spasial", "📊 Tabel Validasi Laboratorium", "🖨️ Cetak Laporan Resmi"],
+        ["🗺️ Peta Utama & Spasial", "📊 Tabel Validasi Laboratorium", "📚 Modul Hidrogeologi & E-Library", "🖨️ Cetak Laporan Resmi"],
         horizontal=False
     )
 
@@ -276,6 +276,60 @@ if uploaded_file is not None:
                 st.dataframe(df, use_container_width=True)
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.info("💡 *Catatan: Anda dapat mengurutkan data atau melakukan pencarian entitas spasial langsung melalui fitur interaktif tabel di atas.*")
+                
+            # --- MENU BARU: MODUL HIDROGEOLOGI & E-LIBRARY ---
+            elif menu_pilihan == "📚 Modul Hidrogeologi & E-Library":
+                st.subheader("📚 E-Library & Modul Analisis Hidrogeologi Karst")
+                st.markdown("Halaman khusus manajemen literatur serta kalkulasi parameter hidrologi sekunder.")
+                
+                # Sub-Bagian 1: Perpustakaan Digital Jurnal
+                st.markdown("### 🏛️ E-Library: Publikasi Karst Lahan Kering")
+                col_lib1, col_lib2 = st.columns(2)
+                
+                with col_lib1:
+                    st.info("**Analisis Karakteristik Akuifer Potensi Air Tanah Karst Lahan Kering NTT**\n\n*Review Literatur Kawasan Sumba Timur & Kupang (2026)*")
+                    st.button("📥 Unduh Review Jurnal (PDF)", key="btn_jurnal_1")
+                    
+                st.markdown("---")
+                
+                # Sub-Bagian 2: Kalkulator Komputasi Rumus
+                st.markdown("### 🧮 Kalkulator Hidrogeologi Komputasi")
+                tab1, tab2 = st.tabs(["💧 1. Analisis Neraca Air", "⛰️ 2. Estimasi Volume Akuifer"])
+                
+                with tab1:
+                    st.write("#### Perhitungan Potensi Surplus / Defisit Air Permukaan")
+                    input_P = st.number_input("Curah Hujan Tahunan (P) — mm", min_value=0.0, value=1200.0, step=50.0)
+                    input_ET = st.number_input("Evapotranspirasi Aktual (ET) — mm", min_value=0.0, value=1400.0, step=50.0)
+                    
+                    if st.button("Hitung Selisih Neraca Air"):
+                        hasil_neraca = input_P - input_ET
+                        st.markdown(f"**Nilai Neraca Air:** `{hasil_neraca:.2f} mm`")
+                        if hasil_neraca < 0:
+                            st.error(f"⚠️ **Status:** Defisit Air Lingkungan Sebesar {abs(hasil_neraca):.2f} mm")
+                            st.caption("Rekomendasi Teknis: Nilai evapotranspirasi melampaui pasokan hujan. Suplai domestik sangat bergantung pada pasokan *aquifer storage* bawah tanah.")
+                        else:
+                            st.success(f"✅ **Status:** Surplus Air Lingkungan Sebesar {hasil_neraca:.2f} mm")
+                            st.caption("Rekomendasi Teknis: Terjadi kelebihan pasokan air permukaan yang potensial masuk ke zona infiltrasi ponor.")
+                            
+                with tab2:
+                    st.write("#### Estimasi Kapasitas Maksimal Cadangan Air Batuan Kapur")
+                    input_A = st.number_input("Luas Area Tangkapan Air (A) — m²", min_value=0.0, value=50000.0, step=1000.0)
+                    input_H = st.number_input("Tebal Jenuh Batuan Akuifer (H) — meter", min_value=0.0, value=25.0, step=1.0)
+                    input_Sy = st.selectbox(
+                        "Porositas Sekunder Batuan Gamping Karst (Sy / Specific Yield):",
+                        [0.02, 0.04, 0.05],
+                        index=1,
+                        format_func=lambda x: f"{int(x*100)}% (Konstanta Karstifikasi)"
+                    )
+                    
+                    if st.button("Estimasi Volume Air Tanah"):
+                        volume_m3 = input_A * input_H * input_Sy
+                        volume_liter = volume_m3 * 1000
+                        
+                        col_res1, col_res2 = st.columns(2)
+                        col_res1.metric("Volume Efektif Akuifer", f"{volume_m3:,.2f} m³")
+                        col_res2.metric("Kapasitas Penyimpanan", f"{volume_liter:,.2f} Liter")
+                        st.caption("*Catatan: Konstanta Sy k=0.04 disesuaikan dengan rata-rata hasil pengujian porositas sekunder makro-karst NTT.")
                 
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
                 st.subheader("🖨️ Dokumen Output Validasi Lapangan Resmi")
