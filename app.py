@@ -211,4 +211,4 @@ if uploaded_file is not None:
         st.error(f"❌ Terjadi kesalahan pemrosesan sistem atau pembacaan Excel. Pesan Error: {e}")
 
 st.markdown("---")
-st.caption("⚡ GeoWater-IQ v2.0 | Penanggung Jawab Teknis: B. Pati Kondanglimu, ST.
+st.caption("⚡ GeoWater-IQ v2.0 | Penanggung Jawab Teknis: B. Pati Kondanglimu, ST. | Validasi Metodologi: Kepmen LH No. 115 Tahun 2003 & PP No. 22 Tahun 2021.")
