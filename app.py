@@ -45,11 +45,12 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     for idx, r in data_frame.iterrows():
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
+        nama_low = str(r['Nama_Sumur']).lower()
         
         # Penyelarasan titik koordinat darat pada PDF lampiran grafis
-        if idx == 0:
+        if "alak 01" in nama_low or "alak" in nama_low:
             lat_p, lon_p = -10.1685, 123.5482
-        if idx == 2:
+        if "namosain" in nama_low:
             lat_p, lon_p = -10.1610, 123.5395
             
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
@@ -103,17 +104,17 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI ISOLASI PETA & FORCE KOREKSI TOTAL BERDASARKAN INDEKS BARIS
+# # 2. FUNGSI PETA INTERAKTIF: SISTEM FILTRASI TEKS TOTAL (ANTI BOCOR)
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
-    # Titik pusat peta baku daratan Alak Kupang
+    # Titik pusat peta baku Kecamatan Alak Kupang
     center_lat = -10.1740
     center_lon = 123.5610
     
     m = folium.Map(location=[center_lat, center_lon], zoom_start=14, control_scale=True)
     
-    # Pilihan layer basemap standar
+    # Basemap Layers pilihan lengkap
     folium.TileLayer('openstreetmap', name='Peta Jalan (OpenStreetMap)').add_to(m)
     
     folium.TileLayer(
@@ -128,19 +129,21 @@ def tampilkan_peta_interaktif(data_frame):
         name='Peta Topografi / Kontur Karst'
     ).add_to(m)
     
-    # Plotting marker sumur air dengan Kunci Baris Mutlak (Anti Gagal)
+    # Perulangan titik sumur dengan sistem deteksi string huruf kecil
     for idx, row in data_frame.iterrows():
+        nama_sumur = str(row['Nama_Sumur'])
+        nama_lower = nama_sumur.lower()
+        
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
-        nama_sumur = str(row['Nama_Sumur'])
         
-        # KUNCI ABSOLUT: Baris 0 (Alak 01) dan Baris 2 (Namosain) dipaksa ke darat
-        if idx == 0:
-            lat_titik = -10.1668
-            lon_titik = 123.5482
-        elif idx == 2:
-            lat_titik = -10.1610
+        # DETEKSI NAMA JELAS - FORCE LOCK KORDIAT DARATAN ASLI
+        if "namosain" in nama_lower:
+            lat_titik = -10.1620
             lon_titik = 123.5395
+        elif "alak" in nama_lower:
+            lat_titik = -10.1690
+            lon_titik = 123.5482
             
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
         
@@ -165,7 +168,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v2")
+    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v3")
 
 
 # ====================================================================
