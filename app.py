@@ -8,19 +8,13 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-# Cek ketersediaan library peta spasial interaktif & pemetaan statis
+# Cek ketersediaan library peta spasial interaktif
 try:
     import folium
     from streamlit_folium import st_folium
     FOLIUM_AVAILABLE = True
 except ImportError:
     FOLIUM_AVAILABLE = False
-
-try:
-    import contextily as ctx
-    CONTEXTILY_AVAILABLE = True
-except ImportError:
-    CONTEXTILY_AVAILABLE = False
 
 # Set konfigurasi halaman utama Web-GIS GeoWater-IQ (Mode Wide)
 st.set_page_config(page_title="GeoWater NTT-IQ v2.0", layout="wide", page_icon="💧")
@@ -57,7 +51,7 @@ def proses_dan_kunci_data(uploaded_file):
     return df
 
 # ====================================================================
-# # 1. FUNGSI UPDATE: GENERATOR LAPORAN DIGITAL DENGAN BASEMAP PETA ASLI
+# # 1. FUNGSI UPDATE v2.3: GENERATOR PDF DENGAN SKETSA GARIS PANTAI KUPANG
 # ====================================================================
 def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     buffer_pdf = io.BytesIO()
@@ -77,8 +71,18 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     elements.append(Paragraph(p_intro, normal_style))
     elements.append(Spacer(1, 12))
     
-    # --- PROSES GENERATE GRAFIK DENGAN LATAR BELAKANG PETA NYATA ---
-    fig, ax = plt.subplots(figsize=(6.5, 3.5))
+    # --- PROSES GENERATE GRAFIK DENGAN SIMULASI GEOMETRI DARATAN ---
+    fig, ax = plt.subplots(figsize=(6.5, 3.8))
+    
+    # Membuat arsiran lautan Teluk Kupang di area utara sebagai orientasi peta lapangan
+    ax.axhspan(-10.1600, -10.1710, facecolor='#EBF8FF', alpha=0.9, label='Laut / Teluk Kupang', zorder=1)
+    # Membuat arsiran wilayah daratan karst Alak di area selatan
+    ax.axhspan(-10.1710, -10.2300, facecolor='#F7FAFC', alpha=0.9, label='Daratan Formasi Klapanunggal/Koral', zorder=1)
+    
+    # Sketsa imajiner garis pantai teluk Kecamatan Alak sebagai jangkar visual
+    pantai_lon = [123.5100, 123.5300, 123.5450, 123.5600, 123.5800, 123.6000]
+    pantai_lat = [-10.1710, -10.1720, -10.1700, -10.1680, -10.1730, -10.1750]
+    ax.plot(pantai_lon, pantai_lat, color='#3182CE', linestyle='-', linewidth=2, label='Garis Pantai Teluk Kupang', zorder=2)
     
     list_lon = []
     list_lat = []
@@ -87,7 +91,7 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
         
-        # JANGKAR MUTLAK DARATAN ALAK
+        # JANGKAR MUTLAK KOORDINAT TEKNIS DESA ALAK & NAMOSAIN
         if "alak 01" in str(r['Nama_Sumur']).lower():
             lat_p, lon_p = -10.1750, 123.5480
         elif "namosain" in str(r['Nama_Sumur']).lower():
@@ -96,40 +100,34 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         list_lon.append(lon_p)
         list_lat.append(lat_p)
         
-        warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
-        ax.scatter(lon_p, lat_p, color=warna, s=110, edgecolors='black', zorder=5)
-        ax.text(lon_p + 0.0004, lat_p + 0.0002, str(r['Nama_Sumur']), fontsize=7, fontweight='bold', zorder=6,
-                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
-    
-    # Konfigurasi batas wilayah grafik agar fokus di Kecamatan Alak
-    padding = 0.015
-    ax.set_xlim(min(list_lon) - padding, max(list_lon) + padding)
-    ax.set_ylim(min(list_lat) - padding, max(list_lat) + padding)
-    
-    # Perintah penyisipan Peta Rupa Bumi Asli (Basemap)
-    if CONTEXTILY_AVAILABLE:
-        try:
-            ctx.add_basemap(ax, crs='EPSG:4326', source=ctx.providers.OpenStreetMap.Mapnik, alpha=0.8)
-        except:
-            ax.grid(True, linestyle='--', alpha=0.5)
-    else:
-        ax.grid(True, linestyle='--', alpha=0.5)
+        warna = '#38A169' if r['Indeks_Pencemaran'] <= 1.0 else ('#DD6B20' if r['Indeks_Pencemaran'] <= 5.0 else '#E53E3E')
+        ax.scatter(lon_p, lat_p, color=warna, s=130, edgecolors='black', linewidths=1.2, zorder=5)
         
-    ax.set_title("Peta Sebaran Mutu Air Bawah Tanah (Kecamatan Alak)", fontsize=9, fontweight='bold', color='#1A365D')
-    ax.set_xlabel("Longitude (Bujur)", fontsize=8)
-    ax.set_ylabel("Latitude (Lintang)", fontsize=8)
+        # Penulisan label nama sumur pantau lapangan dengan latar putih transparan
+        ax.text(lon_p + 0.001, lat_p + 0.0005, str(r['Nama_Sumur']), fontsize=7, fontweight='bold', zorder=6,
+                bbox=dict(facecolor='white', alpha=0.8, edgecolor='#CBD5E0', boxstyle='round,pad=0.2'))
     
-    # Format koordinat agar rapi (tidak memunculkan notasi ilmiah eksponensial)
-    ax.get_xaxis().get_major_formatter().set_useOffset(False)
-    ax.get_yaxis().get_major_formatter().set_useOffset(False)
+    # Membatasi ruang pandang peta agar presisi di kluster Kecamatan Alak
+    ax.set_xlim(123.5200, 123.6000)
+    ax.set_ylim(-10.2200, -10.1650)
+    
+    ax.grid(True, linestyle=':', alpha=0.6, color='#CBD5E0', zorder=3)
+    ax.set_title("PETA SEBARAN MUTU AIR BAWAH TANAH KECAMATAN ALAK", fontsize=9, fontweight='bold', color='#1A365D', pad=10)
+    ax.set_xlabel("Sumbu Bujur / Longitude (°E)", fontsize=8, fontweight='bold', color='#4A5568')
+    ax.set_ylabel("Sumbu Lintang / Latitude (°S)", fontsize=8, fontweight='bold', color='#4A5568')
+    
+    # Menghilangkan penulisan angka eksponensial ilmiah (+1.235e2) agar terbaca koordinat derajat asli resmi
+    ax.ticklabel_format(useOffset=False, style='plain')
+    ax.tick_params(axis='both', labelsize=8)
+    ax.legend(loc='lower left', fontsize=7, framealpha=0.9)
     
     img_buf = io.BytesIO()
     plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=180)
     img_buf.seek(0)
     plt.close(fig)
     
-    elements.append(Paragraph("<b>VISUALISASI PEMETAAN SPASIAL DIGITAL (PETA RUPA BUMI):</b>", ParagraphStyle('SubPeta', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
-    elements.append(Image(img_buf, width=480, height=258))
+    elements.append(Paragraph("<b>VISUALISASI PEMETAAN GEOMETRI SPASIAL AKUIFER:</b>", ParagraphStyle('SubPeta', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
+    elements.append(Image(img_buf, width=480, height=280))
     elements.append(Spacer(1, 15))
     
     # --- PROSES TABEL LAPORAN PDF ---
@@ -177,10 +175,6 @@ def tampilkan_peta_interaktif(data_frame):
     folium.TileLayer(
         tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         attr='Esri World Imagery', name='Citra Satelit (Esri Satellite)'
-    ).add_to(m)
-    folium.TileLayer(
-        tiles='https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-        attr='OpenTopoMap', name='Peta Topografi / Kontur Karst'
     ).add_to(m)
     
     for idx, row in data_frame.iterrows():
@@ -286,9 +280,6 @@ if uploaded_file is not None:
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
                 st.subheader("🖨️ Dokumen Output Validasi Lapangan Resmi")
                 st.write("Gunakan fitur ini untuk menerbitkan dokumen PDF cetak resmi sebagai lampiran valid teknis berkas penelitian.")
-                
-                if not CONTEXTILY_AVAILABLE:
-                    st.warning("⚠️ Library 'contextily' belum terdeteksi. Gambar latar belakang peta rupa bumi pada PDF akan menggunakan mode grid teknis standar.")
                 
                 kelas_mutu_select = st.selectbox(
                     "Pilih Klasifikasi Standar Baku Mutu Air (PP No. 22 Tahun 2021):", 
