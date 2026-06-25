@@ -19,14 +19,14 @@ except ImportError:
 # Set konfigurasi halaman utama Web-GIS GeoWater-IQ (Mode Wide)
 st.set_page_config(page_title="GeoWater NTT-IQ v2.0", layout="wide", page_icon="💧")
 
-# Mengatur style CSS minimalis agar estetika web lebih bersih dan elegan
+# Mengatur style CSS minimalis agar estetika web lebih bersih dan elegan (Perbaikan pada parameter)
 st.markdown("""
     <style>
     .block-container {padding-top: 2rem; padding-bottom: 2rem;}
     h1 {margin-bottom: 0px; padding-bottom: 0px;}
     p.sub-title {font-size: 14px; color: #555555; font-style: italic; margin-top: 5px;}
     </style>
-""", unsafe_index=True)
+""", unsafe_allow_html=True)
 
 # ====================================================================
 # # 1. FUNGSI MANDIRI: GENERATOR LAPORAN DIGITAL (PDF)
@@ -174,18 +174,18 @@ def tampilkan_peta_interaktif(data_frame):
 header_col, menu_col = st.columns([7, 3])
 
 with header_col:
-    st.markdown("<h1 style='color: #1A365D; font-family: Arial; font-weight: bold;'>GeoWater</h1>", unsafe_html=True)
-    st.markdown("<p class='sub-title'>Sistem Validasi Spasial NTT-IQ v2.0: Analisis Akuifer Karst & Mutu Air Tanah</p>", unsafe_html=True)
+    st.markdown("<h1 style='color: #1A365D; font-family: Arial; font-weight: bold;'>GeoWater</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-title'>Sistem Validasi Spasial NTT-IQ v2.0: Analisis Akuifer Karst & Mutu Air Tanah</p>", unsafe_allow_html=True)
 
 with menu_col:
-    st.write("<div style='padding-top: 10px;'></div>", unsafe_html=True) # Jarak pengaman atas
+    st.write("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True) # Jarak pengaman atas
     menu_pilihan = st.radio(
         "🧭 Navigasi Menu Dashboard:",
         ["🗺️ Peta Utama & Spasial", "📊 Tabel Validasi Laboratorium", "🖨️ Cetak Laporan Resmi"],
         horizontal=False
     )
 
-st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border: 0.5px solid #cccccc;'>", unsafe_html=True)
+st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border: 0.5px solid #cccccc;'>", unsafe_allow_html=True)
 
 # Area Drop-Zone Unggah File yang bersih dan minimalis
 uploaded_file = st.file_uploader("📂 Unggah File Excel Data Spasial Air Tanah Alak (.xlsx)", type=["xlsx"])
@@ -223,7 +223,7 @@ if uploaded_file is not None:
             card2.metric("⚠️ Jumlah Titik Terindikasi Pencemaran", f"{sumur_cemar} Titik", delta="Perlu Proteksi", delta_color="inverse")
             card3.metric("🎯 Jarak Terdekat ke Zona Ponor Kritis", f"{jarak_min_ponor} Meter", delta="Kerentanan Karst")
             
-            st.markdown("<br>", unsafe_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
             
             # Logika teks rekomendasi tataruang teknik
             if df['Indeks_Pencemaran'].max() > 5.0 or df['Jarak_Ke_Ponor_Meter'].min() <= 50:
@@ -239,13 +239,13 @@ if uploaded_file is not None:
                 else:
                     st.info("Peta interaktif memuat mode cadangan bawaan.")
                     st.map(df[['Latitude', 'Longitude']])
-                st.write("<br>", unsafe_html=True)
+                st.write("<br>", unsafe_allow_html=True)
                 st.info(rekomendasi_teks)
                 
             elif menu_pilihan == "📊 Tabel Validasi Laboratorium":
                 st.subheader("📊 Database Hasil Validasi Parameter Air Tanah")
                 st.dataframe(df, use_container_width=True)
-                st.write("<br>", unsafe_html=True)
+                st.write("<br>", unsafe_allow_html=True)
                 st.info("💡 *Catatan: Anda dapat mengurutkan data atau melakukan pencarian entitas spasial langsung melalui fitur interaktif tabel di atas.*")
                 
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
