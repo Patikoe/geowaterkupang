@@ -46,9 +46,11 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
         
-        # LOGIKA WILAYAH AMAN DARATAN PADA GRAFIK PDF
-        if lat_p > -10.1640:
-            lat_p = -10.1675  # Paksa geser ke selatan agar mendarat di pemukiman kelurahan
+        # JANGKAR MUTLAK DARATAN PADA GRAFIK PDF
+        if "alak 01" in str(r['Nama_Sumur']).lower():
+            lat_p, lon_p = -10.1750, 123.5480
+        elif "namosain" in str(r['Nama_Sumur']).lower():
+            lat_p, lon_p = -10.1780, 123.5350
             
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
         ax.scatter(lon_p, lat_p, color=warna, s=100, edgecolors='black')
@@ -101,15 +103,15 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI PETA INTERAKTIF: GEO-FENCING WILAYAH KELURAHAN (ANTI-LAUT)
+# # 2. FUNGSI PETA INTERAKTIF: SISTEM JANGKAR DARATAN MUTLAK KUPANG
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
-    # Titik pusat peta baku Kecamatan Alak Kupang
+    # Titik pusat peta Kecamatan Alak Kupang
     center_lat = -10.1740
     center_lon = 123.5610
     
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=14, control_scale=True)
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=13, control_scale=True)
     
     # Basemap Layers pilihan lengkap
     folium.TileLayer('openstreetmap', name='Peta Jalan (OpenStreetMap)').add_to(m)
@@ -129,14 +131,19 @@ def tampilkan_peta_interaktif(data_frame):
     # Perulangan titik sumur
     for idx, row in data_frame.iterrows():
         nama_sumur = str(row['Nama_Sumur'])
+        nama_low = nama_sumur.lower()
+        
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
         
-        # 🔑 LOGIKA GEO-FENCING USULAN PAK PATI:
-        # Jika nilai koordinat Latitude berada di atas -10.1640 (artinya masuk zona laut), 
-        # sistem otomatis menurunkan posisi titik ke zona daratan kelurahan (-10.1685).
-        if lat_titik > -10.1640:
-            lat_titik = -10.1685
+        # ⚓ SISTEM JANGKAR MUTLAK: 
+        # Kita paksa koordinat baru yang JAUH LEBIH KE SELATAN agar masuk ke daratan inti pemukiman gamping Alak & Namosain
+        if "alak 01" in nama_low:
+            lat_titik = -10.1750  # Ditarik jauh ke selatan daratan Alak
+            lon_titik = 123.5480
+        elif "namosain" in nama_low:
+            lat_titik = -10.1780  # Ditarik jauh ke selatan daratan Namosain (Dekat Tenau/Manutapen)
+            lon_titik = 123.5350
             
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
         
@@ -161,7 +168,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1000, height=480, key="peta_spasial_kelurahan_final_v8")
+    st_folium(m, width=1000, height=480, key="peta_spasial_jangkar_mutlak_v9")
 
 
 # ====================================================================
