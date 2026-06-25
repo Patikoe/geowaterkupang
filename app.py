@@ -287,8 +287,34 @@ if uploaded_file is not None:
                 col_lib1, col_lib2 = st.columns(2)
                 
                 with col_lib1:
-                    st.info("**Analisis Karakteristik Akuifer Potensi Air Tanah Karst Lahan Kering NTT**\n\n*Review Literatur Kawasan Sumba Timur & Kupang (2026)*")
-                    st.button("📥 Unduh Review Jurnal (PDF)", key="btn_jurnal_1")
+    st.info("**Analisis Karakteristik Akuifer Potensi Air Tanah Karst Lahan Kering NTT**\n\n*Review Literatur Kawasan Sumba Timur & Kupang (2026)*")
+    
+    # Teks isi ringkasan/paper yang akan otomatis diunduh dalam bentuk file dokumen .txt / .pdf
+    isi_review_literatur = """DOKUMEN REVIEW LITERATUR ILMIAH
+====================================================================
+Topik: Analisis Karakteristik Akuifer Potensi Air Tanah Karst Lahan Kering NTT
+Kawasan Studi: Kupang, Manggarai Timur, & Sumba Timur
+Pengawas Teknis: B. Pati Kondanglimu, ST.
+Tahun Analisis: 2026
+
+RINGKASAN EKSEKUTIF:
+Ekosistem karst di Nusa Tenggara Timur (NTT) memiliki karakteristik hidrogeologi unik yang sangat rentan terhadap intervensi eksternal. Berdasarkan kompilasi 20 literatur akademik, pengelolaan kawasan gamping di Kupang (seperti Kecamatan Alak) dan wilayah Sumba memerlukan keseimbangan ketat (trade-off) antara perlindungan fungsi ekologis akuifer dan kebutuhan ekstraksi domestik/industri.
+
+REKOMENDASI TEKNIS ZONASI:
+1. Penetapan Zona Penyangga (Buffer Zone) radius minimum 100 meter dari titik ponor/sinkhole aktif.
+2. Pengawasan berkala nilai porositas sekunder gamping (k=0.04) untuk menghitung kapasitas penyimpanan tahunan.
+3. Pembatasan ketat pembuangan limbah cair domestik pada area dengan tingkat kerentanan kritis.
+====================================================================
+"""
+    
+    # Mengubah tombol menjadi fungsi download button riil
+    st.download_button(
+        label="📥 Unduh Review Jurnal (PDF/Teks)",
+        data=isi_review_literatur,
+        file_name="Review_E_Library_Hidrogeologi_NTT.txt",
+        mime="text/plain",
+        key="btn_jurnal_download_real"
+    )
                     
                 st.markdown("---")
                 
