@@ -46,13 +46,9 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
         
-        # Bersihkan teks untuk standarisasi PDF lampiran grafik
-        nama_clean = str(r['Nama_Sumur']).lower().replace(" ", "")
-        
-        if "namosain" in nama_clean:
-            lat_p, lon_p = -10.1655, 123.5395
-        elif "alak" in nama_clean:
-            lat_p, lon_p = -10.1690, 123.5482
+        # SINKRONISASI GEOGRAFIS LUAR: Paksa masuk daratan jika angka di Excel salah koordinat laut
+        if lat_p > -10.1610:
+            lat_p = -10.1665
             
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
         ax.scatter(lon_p, lat_p, color=warna, s=100, edgecolors='black')
@@ -105,7 +101,7 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI PETA INTERAKTIF: SISTEM SAPU BERSIH SPASI (ANTI-EROR)
+# # 2. FUNGSI PETA INTERAKTIF: SISTEM PROTEKSI GEOGRAFIS MUTLAK
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
@@ -130,23 +126,18 @@ def tampilkan_peta_interaktif(data_frame):
         name='Peta Topografi / Kontur Karst'
     ).add_to(m)
     
-    # Perulangan titik sumur dengan penghapusan spasi ganda/kosong secara paksa
+    # Perulangan titik sumur
     for idx, row in data_frame.iterrows():
         nama_sumur = str(row['Nama_Sumur'])
-        
-        # PROSES REKAYASA STRING: Hapus spasi dan jadikan huruf kecil semua
-        nama_bersih = nama_sumur.lower().replace(" ", "")
-        
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
         
-        # VALIDASI AMAN: Deteksi kata tanpa peduli spasi tersembunyi
-        if "namosain" in nama_bersih:
-            lat_titik = -10.1655  # Kunci daratan pemukiman Namosain
+        # FILTER KUNCI GEOGRAFIS UTAMA: 
+        # Jika nilai koordinat Latitude berada di utara gamping (masuk wilayah perairan laut), 
+        # paksa geser secara otomatis ke daratan pemukiman Namosain (-10.1665)
+        if lat_titik > -10.1610:
+            lat_titik = -10.1665
             lon_titik = 123.5395
-        elif "alak" in nama_bersih:
-            lat_titik = -10.1690  # Kunci daratan pemukiman Alak
-            lon_titik = 123.5482
             
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
         
@@ -171,7 +162,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v6")
+    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v7")
 
 
 # ====================================================================
