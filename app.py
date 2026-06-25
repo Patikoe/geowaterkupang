@@ -230,22 +230,22 @@ if uploaded_file is not None:
         for _, r in data_frame.iterrows():
             tabel_data.append([r['Nama_Sumur'], str(r['Jarak_Ke_Ponor_Meter']), str(r['Indeks_Pencemaran']), r['Status_Mutu'], r['Kerentanan_Karst']])
         
-    t = Table(tabel_data, colWidths=[130, 90, 60, 110, 130])
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1A365D')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('BOTTOMPADDING', (0,0), (-1,0), 6),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-        ('FONTSIZE', (0,1), (-1,-1), 9),
-    ]))
-    elements.append(t)
-    elements.append(Spacer(1, 15))
+        t = Table(tabel_data, colWidths=[130, 90, 60, 110, 130])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1A365D')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('BOTTOMPADDING', (0,0), (-1,0), 6),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('FONTSIZE', (0,1), (-1,-1), 9),
+        ]))
+        elements.append(t)
+        elements.append(Spacer(1, 15))
     
-    elements.append(Paragraph("<b>REKOMENDASI TATARUANG DAN KONSERVASI:</b>", ParagraphStyle('Sub', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
-    elements.append(Paragraph(teks_rekomendasi, normal_style))
+        elements.append(Paragraph("<b>REKOMENDASI TATARUANG DAN KONSERVASI:</b>", ParagraphStyle('Sub', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
+        elements.append(Paragraph(teks_rekomendasi, normal_style))
     
-    doc.build(elements)
-    return buffer_pdf.getvalue()
+        doc.build(elements)
+        return buffer_pdf.getvalue()
