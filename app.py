@@ -118,12 +118,23 @@ if uploaded_file is not None:
         map_center = [df['Latitude'].mean(), df['Longitude'].mean()]
         m = folium.Map(location=map_center, zoom_start=14, control_scale=True)
         
+        # Menggunakan Citra Satelit Google Resmi
         folium.TileLayer(
-            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            attr='Esri',
-            name='Citra Satelit Gamping',
+            tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+            attr='Google',
+            name='Google Satellite',
             overlay=False,
             control=True
+        ).add_to(m)
+        
+        # Menambahkan Opsi Google Hybrid (Satelit + Nama Jalan)
+        folium.TileLayer(
+            tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            attr='Google',
+            name='Google Hybrid (Satelit + Jalan)',
+            overlay=False,
+            control=True
+        ).add_to(m)
         ).add_to(m)
         folium.TileLayer('openstreetmap', name='Peta Jalan Standar').add_to(m)
         folium.LayerControl().add_to(m)
