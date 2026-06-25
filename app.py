@@ -175,9 +175,9 @@ if uploaded_file is not None:
         
         def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
             from reportlab.lib.pagesizes import letter
-            buffer_pdf = io.BytesIO()
-            doc = SimpleDocTemplate(buffer_pdf, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
-            styles = getSampleStyleSheet()
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
             
             title_style = ParagraphStyle('Judul', parent=styles['Heading1'], fontSize=16, leading=20, textColor=colors.HexColor('#1A365D'), alignment=1)
             meta_style = ParagraphStyle('Meta', parent=styles['Normal'], fontSize=9, leading=12, textColor=colors.gray, alignment=1)
