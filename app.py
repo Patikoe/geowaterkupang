@@ -94,26 +94,32 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI ISOLASI PETA (AGAR STABIL & TIDAK BERGERAK SENDIRI)
+# # 2. FUNGSI ISOLASI PETA (FIXED ATTRIBUTION ERROR)
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
     center_lat = data_frame['Latitude'].mean()
     center_lon = data_frame['Longitude'].mean()
     
-    # Membuat peta dengan pilihan layer standar lengkap
+    # Membuat dasar peta interaktif
     m = folium.Map(location=[center_lat, center_lon], zoom_start=14, control_scale=True)
     
-    # Menambahkan pilihan jenis peta (OpenStreetMap, Satelit Esri, Terrain)
+    # Menambahkan pilihan layer basemap standar dengan atribusi yang valid (Bebas Eror)
     folium.TileLayer('openstreetmap', name='Peta Jalan (OpenStreetMap)').add_to(m)
+    
     folium.TileLayer(
         tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        attr='Esri',
-        name='Citra Satelit (Esri World Imagery)'
+        attr='Esri World Imagery',
+        name='Citra Satelit (Esri Satellite)'
     ).add_to(m)
-    folium.TileLayer('stamen terrain', name='Kontur/Terrain', error_tile_url='').add_to(m)
     
-    # Plotting sumur ke peta
+    folium.TileLayer(
+        tiles='https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        attr='OpenTopoMap',
+        name='Peta Topografi / Kontur Karst'
+    ).add_to(m)
+    
+    # Plotting marker sumur air gamping Alak
     for idx, row in data_frame.iterrows():
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
         
@@ -137,11 +143,11 @@ def tampilkan_peta_interaktif(data_frame):
             fill_opacity=0.8
         ).add_to(m)
     
-    # Tambahkan kontrol tombol pilihan layer di pojok kanan atas peta
+    # Tempatkan pengontrol pilihan layer di kanan atas
     folium.LayerControl(position='topright').add_to(m)
     
-    # Tampilkan peta ke Streamlit dengan key unik agar tidak mereset
-    st_folium(m, width=1000, height=480, key="peta_spasial_alak")
+    # Tampilkan ke layar tanpa memicu putaran render berulang
+    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final")
 
 
 # ====================================================================
@@ -184,7 +190,7 @@ if uploaded_file is not None:
             # Preview tabel data terupdate
             st.dataframe(df)
             
-            # Memanggil fungsi peta spasial interaktif yang sudah dikunci
+            # Memanggil fungsi peta spasial interaktif
             st.markdown("---")
             st.subheader("🗺️ Visualisasi Spasial Interaktif Web-GIS (Kecamatan Alak)")
             
@@ -195,7 +201,7 @@ if uploaded_file is not None:
                 st.map(df[['Latitude', 'Longitude']])
 
             # ====================================================================
-            # # 4. LOGIKA EVALUASI REKOMENDASI TATA RUANG
+            # # 4. LOGIKA EVALUASI REKOMENDASI TATA RUANG (BAHASA ILMIAH)
             # ====================================================================
             st.markdown("---")
             st.subheader("📋 Analisis Konflik Kepentingan & Rekomendasi Kebijakan")
