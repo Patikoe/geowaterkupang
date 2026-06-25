@@ -185,7 +185,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    # Menambahkan parameter returned_objects=[] untuk mematikan callback liar yang memicu pergeseran peta
+    # Kunci returned_objects agar peta tenang dan stabil 100%
     st_folium(m, width=1100, height=500, key="peta_spasial_nttiq_final", returned_objects=[])
 
 
@@ -201,7 +201,8 @@ with header_col:
     st.markdown("<p class='sub-title'>Sistem Validasi Spasial NTT-IQ v2.0: Analisis Akuifer Karst & Mutu Air Tanah</p>", unsafe_allow_html=True)
 
 with menu_col:
-    st.write("<div style='padding-top: 10px;'></div>", unsafe_html=True)
+    # Perbaikan fundamental pada pengatur jarak atas (Menggunakan st.markdown aman)
+    st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
     menu_pilihan = st.radio(
         "🧭 Navigasi Menu Dashboard:",
         ["🗺️ Peta Utama & Spasial", "📊 Tabel Validasi Laboratorium", "🖨️ Cetak Laporan Resmi"],
@@ -263,7 +264,7 @@ if uploaded_file is not None:
                 
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
                 st.subheader("🖨️ Dokumen Output Validasi Lapangan Resmi")
-                st.write("Gunakan fitur ini untuk menerbitkan dokumen PDF cetak resmi sebagai lampiran valid teknis berkas penelitian.")
+                st.write("Gunakan fitur ini untuk menerbitkan dokumen PDF cetak resmi sebagai lampiran valid teknik berkas penelitian.")
                 
                 kelas_mutu_select = st.selectbox(
                     "Pilih Klasifikasi Standar Baku Mutu Air (PP No. 22 Tahun 2021):", 
