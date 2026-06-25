@@ -8,13 +8,19 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-# Cek ketersediaan library peta spasial interaktif
+# Cek ketersediaan library peta spasial interaktif & pemetaan statis
 try:
     import folium
     from streamlit_folium import st_folium
     FOLIUM_AVAILABLE = True
 except ImportError:
     FOLIUM_AVAILABLE = False
+
+try:
+    import contextily as ctx
+    CONTEXTILY_AVAILABLE = True
+except ImportError:
+    CONTEXTILY_AVAILABLE = False
 
 # Set konfigurasi halaman utama Web-GIS GeoWater-IQ (Mode Wide)
 st.set_page_config(page_title="GeoWater NTT-IQ v2.0", layout="wide", page_icon="💧")
@@ -29,13 +35,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ====================================================================
-# # FUNGSI CACHE: MENGUNCI DATA AGAR PETA TIDAK MEMUAT ULANG TERUS (STABIL)
+# # FUNGSI CACHE: MENGUNCI DATA AGAR PETA TIDAK MEMUAT ULANG TERUS
 # ====================================================================
 @st.cache_data
 def proses_dan_kunci_data(uploaded_file):
     df = pd.read_excel(uploaded_file)
     
-    # Perhitungan Otomatis Sistem Inteligensi Data (IQ) - Dikunci di Cache
+    # Perhitungan Otomatis Sistem Inteligensi Data (IQ)
     if 'Indeks_Pencemaran' not in df.columns:
         df['Indeks_Pencemaran'] = np.random.uniform(0.6, 6.2, size=len(df)).round(2)
         
@@ -51,7 +57,7 @@ def proses_dan_kunci_data(uploaded_file):
     return df
 
 # ====================================================================
-# # 1. FUNGSI MANDIRI: GENERATOR LAPORAN DIGITAL (PDF)
+# # 1. FUNGSI UPDATE: GENERATOR LAPORAN DIGITAL DENGAN BASEMAP PETA ASLI
 # ====================================================================
 def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     buffer_pdf = io.BytesIO()
@@ -71,34 +77,59 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     elements.append(Paragraph(p_intro, normal_style))
     elements.append(Spacer(1, 12))
     
-    # --- PROSES GENERATE GRAFIK SPASIAL UNTUK LAMPIRAN PDF ---
-    fig, ax = plt.subplots(figsize=(6, 3))
+    # --- PROSES GENERATE GRAFIK DENGAN LATAR BELAKANG PETA NYATA ---
+    fig, ax = plt.subplots(figsize=(6.5, 3.5))
+    
+    list_lon = []
+    list_lat = []
+    
     for idx, r in data_frame.iterrows():
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
         
-        # JANGKAR MUTLAK DARATAN PADA GRAFIK PDF
+        # JANGKAR MUTLAK DARATAN ALAK
         if "alak 01" in str(r['Nama_Sumur']).lower():
             lat_p, lon_p = -10.1750, 123.5480
         elif "namosain" in str(r['Nama_Sumur']).lower():
             lat_p, lon_p = -10.1780, 123.5350
             
+        list_lon.append(lon_p)
+        list_lat.append(lat_p)
+        
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
-        ax.scatter(lon_p, lat_p, color=warna, s=100, edgecolors='black')
-        ax.text(lon_p + 0.0003, lat_p, str(r['Nama_Sumur']), fontsize=8)
+        ax.scatter(lon_p, lat_p, color=warna, s=110, edgecolors='black', zorder=5)
+        ax.text(lon_p + 0.0004, lat_p + 0.0002, str(r['Nama_Sumur']), fontsize=7, fontweight='bold', zorder=6,
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
     
-    ax.set_title("Peta Sebaran Mutu Air Bawah Tanah (Kecamatan Alak)", fontsize=10, fontweight='bold')
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    ax.grid(True, linestyle='--', alpha=0.5)
+    # Konfigurasi batas wilayah grafik agar fokus di Kecamatan Alak
+    padding = 0.015
+    ax.set_xlim(min(list_lon) - padding, max(list_lon) + padding)
+    ax.set_ylim(min(list_lat) - padding, max(list_lat) + padding)
+    
+    # Perintah penyisipan Peta Rupa Bumi Asli (Basemap)
+    if CONTEXTILY_AVAILABLE:
+        try:
+            ctx.add_basemap(ax, crs='EPSG:4326', source=ctx.providers.OpenStreetMap.Mapnik, alpha=0.8)
+        except:
+            ax.grid(True, linestyle='--', alpha=0.5)
+    else:
+        ax.grid(True, linestyle='--', alpha=0.5)
+        
+    ax.set_title("Peta Sebaran Mutu Air Bawah Tanah (Kecamatan Alak)", fontsize=9, fontweight='bold', color='#1A365D')
+    ax.set_xlabel("Longitude (Bujur)", fontsize=8)
+    ax.set_ylabel("Latitude (Lintang)", fontsize=8)
+    
+    # Format koordinat agar rapi (tidak memunculkan notasi ilmiah eksponensial)
+    ax.get_xaxis().get_major_formatter().set_useOffset(False)
+    ax.get_yaxis().get_major_formatter().set_useOffset(False)
     
     img_buf = io.BytesIO()
-    plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=150)
+    plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=180)
     img_buf.seek(0)
     plt.close(fig)
     
-    elements.append(Paragraph("<b>VISUALISASI PEMETAAN SPASIAL DIGITAL:</b>", ParagraphStyle('SubPeta', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
-    elements.append(Image(img_buf, width=450, height=225))
+    elements.append(Paragraph("<b>VISUALISASI PEMETAAN SPASIAL DIGITAL (PETA RUPA BUMI):</b>", ParagraphStyle('SubPeta', parent=styles['Heading3'], textColor=colors.HexColor('#1A365D'))))
+    elements.append(Image(img_buf, width=480, height=258))
     elements.append(Spacer(1, 15))
     
     # --- PROSES TABEL LAPORAN PDF ---
@@ -134,7 +165,7 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI PETA INTERAKTIF: SISTEM JANGKAR DARATAN MUTLAK KUPANG
+# # 2. FUNGSI PETA INTERAKTIF
 # ====================================================================
 def tampilkan_peta_interaktif(data_frame):
     center_lat = -10.1740
@@ -158,7 +189,6 @@ def tampilkan_peta_interaktif(data_frame):
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
         
-        # Filter Pengunci Spasial Mutu Daratan Kecamatan Alak
         if "alak 01" in nama_low:
             lat_titik = -10.1750
             lon_titik = 123.5480
@@ -185,15 +215,12 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    # Kunci returned_objects agar peta tenang dan stabil penuh
     st_folium(m, width=1100, height=500, key="peta_spasial_nttiq_final", returned_objects=[])
 
 
 # ====================================================================
 # # 3. TAMPILAN INTERFACE UTAMA ELEGAN
 # ====================================================================
-
-# Membuat Layout Header Kiri dan Menu Kanan menggunakan pembagian kolom (Columns)
 header_col, menu_col = st.columns([7, 3])
 
 with header_col:
@@ -201,7 +228,6 @@ with header_col:
     st.markdown("<p class='sub-title'>Sistem Validasi Spasial NTT-IQ v2.0: Analisis Akuifer Karst & Mutu Air Tanah</p>", unsafe_allow_html=True)
 
 with menu_col:
-    # Menggunakan elemen pembatas murni tanpa parameter terlarang
     st.markdown("<br>", unsafe_allow_html=True)
     menu_pilihan = st.radio(
         "🧭 Navigasi Menu Dashboard:",
@@ -211,12 +237,10 @@ with menu_col:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border: 0.5px solid #cccccc;'>", unsafe_allow_html=True)
 
-# Area Drop-Zone Unggah File
 uploaded_file = st.file_uploader("📂 Unggah File Excel Data Spasial Air Tanah Alak (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     try:
-        # Membaca data dengan fungsi cache khusus agar stabil
         df_mentah = pd.read_excel(uploaded_file)
         kolom_wajib = ['Nama_Sumur', 'Latitude', 'Longitude', 'Jarak_Ke_Ponor_Meter']
         missing_kolom = [col for col in kolom_wajib if col not in df_mentah.columns]
@@ -224,10 +248,8 @@ if uploaded_file is not None:
         if missing_kolom:
             st.error(f"❌ Format Excel salah! Kolom berikut tidak ditemukan: {missing_kolom}.")
         else:
-            # Memanggil data yang sudah dikunci memorinya
             df = proses_dan_kunci_data(uploaded_file)
             
-            # --- 📊 TAMPILAN METRIC CARDS KOTAK INDIKATOR PINTAR ELEGAN ---
             total_sumur = len(df)
             sumur_cemar = len(df[df['Indeks_Pencemaran'] > 1.0])
             jarak_min_ponor = int(df['Jarak_Ke_Ponor_Meter'].min())
@@ -239,7 +261,6 @@ if uploaded_file is not None:
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Logika teks rekomendasi tataruang teknik
             if df['Indeks_Pencemaran'].max() > 5.0 or df['Jarak_Ke_Ponor_Meter'].min() <= 50:
                 rekomendasi_teks = "⚠️ **Rekomendasi Kebijakan (Proteksi Ketat):** Berdasarkan pemetaan spasial NTT-IQ v2.0, ditemukan titik air dengan tingkat pencemaran tinggi atau berada dekat dengan zona ponor/sinkhole kritis gamping Alak. Guna mengatasi benturan kepentingan (trade-off) antara konservasi ekosistem dan aktivitas domestik, diperlukan penetapan zona penyangga (buffer zone) radius 100 meter dari pusat ponor yang wajib bebas dari paparan limbah. Pengetatan regulasi tata ruang wilayah karst Alak sangat mendesak dilakukan demi menjaga keberlanjutan akuifer air tanah."
             else:
@@ -265,6 +286,9 @@ if uploaded_file is not None:
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
                 st.subheader("🖨️ Dokumen Output Validasi Lapangan Resmi")
                 st.write("Gunakan fitur ini untuk menerbitkan dokumen PDF cetak resmi sebagai lampiran valid teknis berkas penelitian.")
+                
+                if not CONTEXTILY_AVAILABLE:
+                    st.warning("⚠️ Library 'contextily' belum terdeteksi. Gambar latar belakang peta rupa bumi pada PDF akan menggunakan mode grid teknis standar.")
                 
                 kelas_mutu_select = st.selectbox(
                     "Pilih Klasifikasi Standar Baku Mutu Air (PP No. 22 Tahun 2021):", 
