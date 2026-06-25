@@ -247,4 +247,4 @@ if uploaded_file is not None:
             elements.append(Paragraph(teks_rekomendasi, normal_style))
             
             doc.build(elements)
-            return buffer_pdf.getvalue()sarkan Kepmen LH 115/2003 & PP 22/2021.*")
+            return buffer_pdf.getvalue()
