@@ -46,9 +46,9 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
         
-        # SINKRONISASI GEOGRAFIS LUAR: Paksa masuk daratan jika angka di Excel salah koordinat laut
-        if lat_p > -10.1610:
-            lat_p = -10.1665
+        # LOGIKA WILAYAH AMAN DARATAN PADA GRAFIK PDF
+        if lat_p > -10.1640:
+            lat_p = -10.1675  # Paksa geser ke selatan agar mendarat di pemukiman kelurahan
             
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
         ax.scatter(lon_p, lat_p, color=warna, s=100, edgecolors='black')
@@ -101,7 +101,7 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI PETA INTERAKTIF: SISTEM PROTEKSI GEOGRAFIS MUTLAK
+# # 2. FUNGSI PETA INTERAKTIF: GEO-FENCING WILAYAH KELURAHAN (ANTI-LAUT)
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
@@ -132,12 +132,11 @@ def tampilkan_peta_interaktif(data_frame):
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
         
-        # FILTER KUNCI GEOGRAFIS UTAMA: 
-        # Jika nilai koordinat Latitude berada di utara gamping (masuk wilayah perairan laut), 
-        # paksa geser secara otomatis ke daratan pemukiman Namosain (-10.1665)
-        if lat_titik > -10.1610:
-            lat_titik = -10.1665
-            lon_titik = 123.5395
+        # 🔑 LOGIKA GEO-FENCING USULAN PAK PATI:
+        # Jika nilai koordinat Latitude berada di atas -10.1640 (artinya masuk zona laut), 
+        # sistem otomatis menurunkan posisi titik ke zona daratan kelurahan (-10.1685).
+        if lat_titik > -10.1640:
+            lat_titik = -10.1685
             
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
         
@@ -162,7 +161,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v7")
+    st_folium(m, width=1000, height=480, key="peta_spasial_kelurahan_final_v8")
 
 
 # ====================================================================
