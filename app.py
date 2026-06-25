@@ -172,7 +172,7 @@ if uploaded_file is not None:
 
         # 8. FITUR 3: GENERATOR LAPORAN DIGITAL (PDF)
         st.subheader("🖨️ Cetak Dokumen Output Hasil Validasi Lapangan")
-    def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
+def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         # --- 1. BLOK IMPOR LENGKAP DAN VALID ---
         from reportlab.lib.pagesizes import letter
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
