@@ -172,9 +172,6 @@ if uploaded_file is not None:
 
         # 8. FITUR 3: GENERATOR LAPORAN DIGITAL (PDF)
         st.subheader("🖨️ Cetak Dokumen Output Hasil Validasi Lapangan")
-except Exception as e:
-        st.error(f"Gagal memproses file. Pastikan format kolom Excel Anda sudah sesuai dengan template contoh. Error: {e}")
-
 # ====================================================================
 # # 8. FITUR 3: GENERATOR LAPORAN DIGITAL (PDF) - MANDIRI DI PALING BAWAH
 # ====================================================================
