@@ -174,6 +174,7 @@ if uploaded_file is not None:
         st.subheader("🖨️ Cetak Dokumen Output Hasil Validasi Lapangan")
         
         def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
+            from reportlab.lib.pagesizes import letter
             buffer_pdf = io.BytesIO()
             doc = SimpleDocTemplate(buffer_pdf, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
             styles = getSampleStyleSheet()
