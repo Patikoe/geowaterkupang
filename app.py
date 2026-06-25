@@ -19,7 +19,7 @@ except ImportError:
 # Set konfigurasi halaman utama Web-GIS GeoWater-IQ (Mode Wide)
 st.set_page_config(page_title="GeoWater NTT-IQ v2.0", layout="wide", page_icon="💧")
 
-# Mengatur style CSS minimalis agar estetika web lebih bersih dan elegan (Perbaikan pada parameter)
+# Mengatur style CSS minimalis agar estetika web lebih bersih dan elegan
 st.markdown("""
     <style>
     .block-container {padding-top: 2rem; padding-bottom: 2rem;}
@@ -27,6 +27,28 @@ st.markdown("""
     p.sub-title {font-size: 14px; color: #555555; font-style: italic; margin-top: 5px;}
     </style>
 """, unsafe_allow_html=True)
+
+# ====================================================================
+# # FUNGSI CACHE: MENGUNCI DATA AGAR PETA TIDAK MEMUAT ULANG TERUS (STABIL)
+# ====================================================================
+@st.cache_data
+def proses_dan_kunci_data(uploaded_file):
+    df = pd.read_excel(uploaded_file)
+    
+    # Perhitungan Otomatis Sistem Inteligensi Data (IQ) - Dikunci di Cache
+    if 'Indeks_Pencemaran' not in df.columns:
+        df['Indeks_Pencemaran'] = np.random.uniform(0.6, 6.2, size=len(df)).round(2)
+        
+    if 'Status_Mutu' not in df.columns:
+        df['Status_Mutu'] = df['Indeks_Pencemaran'].apply(
+            lambda x: 'Memenuhi Baku Mutu' if x <= 1.0 else ('Cemar Ringan' if x <= 5.0 else 'Cemar Sedang/Berat')
+        )
+        
+    if 'Kerentanan_Karst' not in df.columns:
+        df['Kerentanan_Karst'] = df['Jarak_Ke_Ponor_Meter'].apply(
+            lambda x: 'Sangat Rentan (Kritis)' if x <= 100 else ('Moderat' if x <= 300 else 'Kerentanan Rendah')
+        )
+    return df
 
 # ====================================================================
 # # 1. FUNGSI MANDIRI: GENERATOR LAPORAN DIGITAL (PDF)
@@ -163,11 +185,12 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1100, height=500, key="peta_spasial_nttiq_final")
+    # Menambahkan parameter returned_objects=[] untuk mematikan callback liar yang memicu pergeseran peta
+    st_folium(m, width=1100, height=500, key="peta_spasial_nttiq_final", returned_objects=[])
 
 
 # ====================================================================
-# # 3. TAMPILAN INTERFACE UTAMA ELEGAN (STRUKTUR BARU)
+# # 3. TAMPILAN INTERFACE UTAMA ELEGAN
 # ====================================================================
 
 # Membuat Layout Header Kiri dan Menu Kanan menggunakan pembagian kolom (Columns)
@@ -178,7 +201,7 @@ with header_col:
     st.markdown("<p class='sub-title'>Sistem Validasi Spasial NTT-IQ v2.0: Analisis Akuifer Karst & Mutu Air Tanah</p>", unsafe_allow_html=True)
 
 with menu_col:
-    st.write("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True) # Jarak pengaman atas
+    st.write("<div style='padding-top: 10px;'></div>", unsafe_html=True)
     menu_pilihan = st.radio(
         "🧭 Navigasi Menu Dashboard:",
         ["🗺️ Peta Utama & Spasial", "📊 Tabel Validasi Laboratorium", "🖨️ Cetak Laporan Resmi"],
@@ -187,31 +210,21 @@ with menu_col:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border: 0.5px solid #cccccc;'>", unsafe_allow_html=True)
 
-# Area Drop-Zone Unggah File yang bersih dan minimalis
+# Area Drop-Zone Unggah File
 uploaded_file = st.file_uploader("📂 Unggah File Excel Data Spasial Air Tanah Alak (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     try:
-        df = pd.read_excel(uploaded_file)
+        # Membaca data dengan fungsi cache khusus agar stabil
+        df_mentah = pd.read_excel(uploaded_file)
         kolom_wajib = ['Nama_Sumur', 'Latitude', 'Longitude', 'Jarak_Ke_Ponor_Meter']
-        missing_kolom = [col for col in kolom_wajib if col not in df.columns]
+        missing_kolom = [col for col in kolom_wajib if col not in df_mentah.columns]
         
         if missing_kolom:
             st.error(f"❌ Format Excel salah! Kolom berikut tidak ditemukan: {missing_kolom}.")
         else:
-            # Perhitungan Otomatis Sistem Inteligensi Data (IQ)
-            if 'Indeks_Pencemaran' not in df.columns:
-                df['Indeks_Pencemaran'] = np.random.uniform(0.6, 6.2, size=len(df)).round(2)
-                
-            if 'Status_Mutu' not in df.columns:
-                df['Status_Mutu'] = df['Indeks_Pencemaran'].apply(
-                    lambda x: 'Memenuhi Baku Mutu' if x <= 1.0 else ('Cemar Ringan' if x <= 5.0 else 'Cemar Sedang/Berat')
-                )
-                
-            if 'Kerentanan_Karst' not in df.columns:
-                df['Kerentanan_Karst'] = df['Jarak_Ke_Ponor_Meter'].apply(
-                    lambda x: 'Sangat Rentan (Kritis)' if x <= 100 else ('Moderat' if x <= 300 else 'Kerentanan Rendah')
-                )
+            # Memanggil data yang sudah dikunci memorinya
+            df = proses_dan_kunci_data(uploaded_file)
             
             # --- 📊 TAMPILAN METRIC CARDS KOTAK INDIKATOR PINTAR ELEGAN ---
             total_sumur = len(df)
@@ -231,7 +244,7 @@ if uploaded_file is not None:
             else:
                 rekomendasi_teks = "✅ **Rekomendasi Kebijakan (Preservasi Terkendali):** Kondisi kualitas air bawah tanah gamping terpantau stabil dalam rentang batas baku mutu lingkungan. Aktivitas pemanfaatan ruang dan pengelolaan wilayah dapat tetap berjalan dengan menerapkan pengawasan berkala (monitoring spasial) setiap 6 bulan sekali pada sumur pantau utama."
 
-            # --- KONDISI ALUR NAVIGASI SESUAI TOMBOL PILIHAN DI KANAN ---
+            # --- KONDISI ALUR NAVIGASI ---
             if menu_pilihan == "🗺️ Peta Utama & Spasial":
                 st.subheader("🗺️ Visualisasi Spasial Interaktif Kawasan Karst (Alak - Kupang)")
                 if FOLIUM_AVAILABLE:
@@ -239,13 +252,13 @@ if uploaded_file is not None:
                 else:
                     st.info("Peta interaktif memuat mode cadangan bawaan.")
                     st.map(df[['Latitude', 'Longitude']])
-                st.write("<br>", unsafe_allow_html=True)
+                st.write("<br>", unsafe_html=True)
                 st.info(rekomendasi_teks)
                 
             elif menu_pilihan == "📊 Tabel Validasi Laboratorium":
                 st.subheader("📊 Database Hasil Validasi Parameter Air Tanah")
                 st.dataframe(df, use_container_width=True)
-                st.write("<br>", unsafe_allow_html=True)
+                st.write("<br>", unsafe_html=True)
                 st.info("💡 *Catatan: Anda dapat mengurutkan data atau melakukan pencarian entitas spasial langsung melalui fitur interaktif tabel di atas.*")
                 
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
