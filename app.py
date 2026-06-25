@@ -48,10 +48,10 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
         nama_low = str(r['Nama_Sumur']).lower()
         
         # Penyelarasan titik koordinat darat pada PDF lampiran grafis
-        if "alak 01" in nama_low or "alak" in nama_low:
-            lat_p, lon_p = -10.1685, 123.5482
         if "namosain" in nama_low:
-            lat_p, lon_p = -10.1610, 123.5395
+            lat_p, lon_p = -10.1655, 123.5395
+        elif "alak" in nama_low:
+            lat_p, lon_p = -10.1690, 123.5482
             
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
         ax.scatter(lon_p, lat_p, color=warna, s=100, edgecolors='black')
@@ -137,12 +137,12 @@ def tampilkan_peta_interaktif(data_frame):
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
         
-        # DETEKSI NAMA JELAS - FORCE LOCK KORDIAT DARATAN ASLI
+        # DETEKSI TEKS ABSOLUT - FORCE LOCK KOORDINAT DARATAN ASLI KUPANG
         if "namosain" in nama_lower:
-            lat_titik = -10.1620
+            lat_titik = -10.1655  # Diturunkan ke selatan agar masuk daratan gamping Namosain jauh dari laut
             lon_titik = 123.5395
         elif "alak" in nama_lower:
-            lat_titik = -10.1690
+            lat_titik = -10.1690  # Tetap terkunci di daratan inti Alak
             lon_titik = 123.5482
             
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
@@ -168,7 +168,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v3")
+    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v5")
 
 
 # ====================================================================
