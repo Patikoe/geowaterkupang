@@ -185,7 +185,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    # Kunci returned_objects agar peta tenang dan stabil 100%
+    # Kunci returned_objects agar peta tenang dan stabil penuh
     st_folium(m, width=1100, height=500, key="peta_spasial_nttiq_final", returned_objects=[])
 
 
@@ -201,8 +201,8 @@ with header_col:
     st.markdown("<p class='sub-title'>Sistem Validasi Spasial NTT-IQ v2.0: Analisis Akuifer Karst & Mutu Air Tanah</p>", unsafe_allow_html=True)
 
 with menu_col:
-    # Perbaikan fundamental pada pengatur jarak atas (Menggunakan st.markdown aman)
-    st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+    # Menggunakan elemen pembatas murni tanpa parameter terlarang
+    st.markdown("<br>", unsafe_allow_html=True)
     menu_pilihan = st.radio(
         "🧭 Navigasi Menu Dashboard:",
         ["🗺️ Peta Utama & Spasial", "📊 Tabel Validasi Laboratorium", "🖨️ Cetak Laporan Resmi"],
@@ -253,18 +253,18 @@ if uploaded_file is not None:
                 else:
                     st.info("Peta interaktif memuat mode cadangan bawaan.")
                     st.map(df[['Latitude', 'Longitude']])
-                st.write("<br>", unsafe_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
                 st.info(rekomendasi_teks)
                 
             elif menu_pilihan == "📊 Tabel Validasi Laboratorium":
                 st.subheader("📊 Database Hasil Validasi Parameter Air Tanah")
                 st.dataframe(df, use_container_width=True)
-                st.write("<br>", unsafe_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
                 st.info("💡 *Catatan: Anda dapat mengurutkan data atau melakukan pencarian entitas spasial langsung melalui fitur interaktif tabel di atas.*")
                 
             elif menu_pilihan == "🖨️ Cetak Laporan Resmi":
                 st.subheader("🖨️ Dokumen Output Validasi Lapangan Resmi")
-                st.write("Gunakan fitur ini untuk menerbitkan dokumen PDF cetak resmi sebagai lampiran valid teknik berkas penelitian.")
+                st.write("Gunakan fitur ini untuk menerbitkan dokumen PDF cetak resmi sebagai lampiran valid teknis berkas penelitian.")
                 
                 kelas_mutu_select = st.selectbox(
                     "Pilih Klasifikasi Standar Baku Mutu Air (PP No. 22 Tahun 2021):", 
