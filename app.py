@@ -135,7 +135,7 @@ if uploaded_file is not None:
             overlay=False,
             control=True
         ).add_to(m)
-        ).add_to(m)
+        
         folium.TileLayer('openstreetmap', name='Peta Jalan Standar').add_to(m)
         folium.LayerControl().add_to(m)
 
