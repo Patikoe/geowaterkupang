@@ -45,12 +45,13 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     for idx, r in data_frame.iterrows():
         lat_p = float(r['Latitude'])
         lon_p = float(r['Longitude'])
-        nama_low = str(r['Nama_Sumur']).lower()
         
-        # Penyelarasan titik koordinat darat pada PDF lampiran grafis
-        if "namosain" in nama_low:
+        # Bersihkan teks untuk standarisasi PDF lampiran grafik
+        nama_clean = str(r['Nama_Sumur']).lower().replace(" ", "")
+        
+        if "namosain" in nama_clean:
             lat_p, lon_p = -10.1655, 123.5395
-        elif "alak" in nama_low:
+        elif "alak" in nama_clean:
             lat_p, lon_p = -10.1690, 123.5482
             
         warna = 'green' if r['Indeks_Pencemaran'] <= 1.0 else ('orange' if r['Indeks_Pencemaran'] <= 5.0 else 'red')
@@ -104,7 +105,7 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI PETA INTERAKTIF: SISTEM FILTRASI TEKS TOTAL (ANTI BOCOR)
+# # 2. FUNGSI PETA INTERAKTIF: SISTEM SAPU BERSIH SPASI (ANTI-EROR)
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
@@ -129,20 +130,22 @@ def tampilkan_peta_interaktif(data_frame):
         name='Peta Topografi / Kontur Karst'
     ).add_to(m)
     
-    # Perulangan titik sumur dengan sistem deteksi string huruf kecil
+    # Perulangan titik sumur dengan penghapusan spasi ganda/kosong secara paksa
     for idx, row in data_frame.iterrows():
         nama_sumur = str(row['Nama_Sumur'])
-        nama_lower = nama_sumur.lower()
+        
+        # PROSES REKAYASA STRING: Hapus spasi dan jadikan huruf kecil semua
+        nama_bersih = nama_sumur.lower().replace(" ", "")
         
         lat_titik = float(row['Latitude'])
         lon_titik = float(row['Longitude'])
         
-        # DETEKSI TEKS ABSOLUT - FORCE LOCK KOORDINAT DARATAN ASLI KUPANG
-        if "namosain" in nama_lower:
-            lat_titik = -10.1655  # Diturunkan ke selatan agar masuk daratan gamping Namosain jauh dari laut
+        # VALIDASI AMAN: Deteksi kata tanpa peduli spasi tersembunyi
+        if "namosain" in nama_bersih:
+            lat_titik = -10.1655  # Kunci daratan pemukiman Namosain
             lon_titik = 123.5395
-        elif "alak" in nama_lower:
-            lat_titik = -10.1690  # Tetap terkunci di daratan inti Alak
+        elif "alak" in nama_bersih:
+            lat_titik = -10.1690  # Kunci daratan pemukiman Alak
             lon_titik = 123.5482
             
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
@@ -168,7 +171,7 @@ def tampilkan_peta_interaktif(data_frame):
         ).add_to(m)
     
     folium.LayerControl(position='topright').add_to(m)
-    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v5")
+    st_folium(m, width=1000, height=480, key="peta_spasial_alak_final_v6")
 
 
 # ====================================================================
