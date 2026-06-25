@@ -20,7 +20,7 @@ except ImportError:
 st.set_page_config(page_title="GeoWater-IQ v2.0", layout="wide", page_icon="💧")
 
 # ====================================================================
-# # 1. FUNGSI MANDIRI: GENERATOR LAPORAN DIGITAL (PDF) - RATA KIRI AMAN
+# # 1. FUNGSI MANDIRI: GENERATOR LAPORAN DIGITAL (PDF)
 # ====================================================================
 def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
     buffer_pdf = io.BytesIO()
@@ -94,7 +94,58 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. TAMPILAN INTERFACE UTAMA WEB-GIS
+# # 2. FUNGSI ISOLASI PETA (AGAR STABIL & TIDAK BERGERAK SENDIRI)
+# ====================================================================
+@st.fragment
+def tampilkan_peta_interaktif(data_frame):
+    center_lat = data_frame['Latitude'].mean()
+    center_lon = data_frame['Longitude'].mean()
+    
+    # Membuat peta dengan pilihan layer standar lengkap
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=14, control_scale=True)
+    
+    # Menambahkan pilihan jenis peta (OpenStreetMap, Satelit Esri, Terrain)
+    folium.TileLayer('openstreetmap', name='Peta Jalan (OpenStreetMap)').add_to(m)
+    folium.TileLayer(
+        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attr='Esri',
+        name='Citra Satelit (Esri World Imagery)'
+    ).add_to(m)
+    folium.TileLayer('stamen terrain', name='Kontur/Terrain', error_tile_url='').add_to(m)
+    
+    # Plotting sumur ke peta
+    for idx, row in data_frame.iterrows():
+        color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
+        
+        popup_text = f"""
+        <div style='font-family: Arial; font-size: 12px; width: 200px;'>
+            <b>Sumur:</b> {row['Nama_Sumur']}<br>
+            <b>Skor IP:</b> {row['Indeks_Pencemaran']}<br>
+            <b>Status:</b> {row['Status_Mutu']}<br>
+            <b>Jarak ke Ponor:</b> {row['Jarak_Ke_Ponor_Meter']} m<br>
+            <b>Zonasi:</b> {row['Kerentanan_Karst']}
+        </div>
+        """
+        
+        folium.CircleMarker(
+            location=[row['Latitude'], row['Longitude']],
+            radius=9,
+            popup=folium.Popup(popup_text, max_width=250),
+            color='black',
+            fill=True,
+            fill_color=color_marker,
+            fill_opacity=0.8
+        ).add_to(m)
+    
+    # Tambahkan kontrol tombol pilihan layer di pojok kanan atas peta
+    folium.LayerControl(position='topright').add_to(m)
+    
+    # Tampilkan peta ke Streamlit dengan key unik agar tidak mereset
+    st_folium(m, width=1000, height=480, key="peta_spasial_alak")
+
+
+# ====================================================================
+# # 3. TAMPILAN INTERFACE UTAMA WEB-GIS
 # ====================================================================
 st.title("💧 GeoWater-IQ v2.0")
 st.markdown("### **Sistem Validasi Kualitas Air & Analisis Spasial Kerentanan Karst Wilayah NTT**")
@@ -105,10 +156,9 @@ uploaded_file = st.file_uploader("📂 Unggah File Excel Data Spasial Air Tanah 
 
 if uploaded_file is not None:
     try:
-        # Membaca data excel asli dari pengguna
         df = pd.read_excel(uploaded_file)
         
-        # Validasi Kolom Wajib Excel agar tidak terjadi bentrok data
+        # Validasi nama kolom wajib asli
         kolom_wajib = ['Nama_Sumur', 'Latitude', 'Longitude', 'Jarak_Ke_Ponor_Meter']
         missing_kolom = [col for col in kolom_wajib if col not in df.columns]
         
@@ -117,7 +167,7 @@ if uploaded_file is not None:
         else:
             st.success("🎉 Data Excel Kecamatan Alak Berhasil Dimuat dan Divalidasi!")
             
-            # Perhitungan Teknis Otomatis (Trade-off Parameter Lingkungan)
+            # Sinkronisasi Parameter Perhitungan
             if 'Indeks_Pencemaran' not in df.columns:
                 df['Indeks_Pencemaran'] = np.random.uniform(0.6, 6.2, size=len(df)).round(2)
                 
@@ -131,53 +181,21 @@ if uploaded_file is not None:
                     lambda x: 'Sangat Rentan (Kritis)' if x <= 100 else ('Moderat' if x <= 300 else 'Kerentanan Rendah')
                 )
             
-            # Menampilkan preview tabel data spasial terupdate
+            # Preview tabel data terupdate
             st.dataframe(df)
             
-            # ====================================================================
-            # # 3. MAPBOX / FOLIUM INTERACTIVE SPATIAL MAP (PETA INTERAKTIF 3 HARI LALU)
-            # ====================================================================
+            # Memanggil fungsi peta spasial interaktif yang sudah dikunci
             st.markdown("---")
-            st.subheader("🗺️ Visualisai Spasial Interaktif Web-GIS (Kecamatan Alak)")
+            st.subheader("🗺️ Visualisasi Spasial Interaktif Web-GIS (Kecamatan Alak)")
             
             if FOLIUM_AVAILABLE:
-                # Titik pusat peta (Kecamatan Alak, Kupang)
-                center_lat = df['Latitude'].mean()
-                center_lon = df['Longitude'].mean()
-                m = folium.Map(location=[center_lat, center_lon], zoom_start=14, control_scale=True)
-                
-                # Plotting sumur dan zonasi kerentanan karst secara interaktif
-                for idx, row in df.iterrows():
-                    color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
-                    
-                    popup_text = f"""
-                    <div style='font-family: Arial; font-size: 12px; width: 200px;'>
-                        <b>Sumur:</b> {row['Nama_Sumur']}<br>
-                        <b>Skor IP:</b> {row['Indeks_Pencemaran']}<br>
-                        <b>Status:</b> {row['Status_Mutu']}<br>
-                        <b>Jarak ke Ponor:</b> {row['Jarak_Ke_Ponor_Meter']} meter<br>
-                        <b>Zonasi:</b> {row['Kerentanan_Karst']}
-                    </div>
-                    """
-                    
-                    folium.CircleMarker(
-                        location=[row['Latitude'], row['Longitude']],
-                        radius=9,
-                        popup=folium.Popup(popup_text, max_width=250),
-                        color='black',
-                        fill=True,
-                        fill_color=color_marker,
-                        fill_opacity=0.8
-                    ).add_to(m)
-                
-                # Render peta spasial ke sistem Streamlit
-                st_folium(m, width=1000, height=450)
+                tampilkan_peta_interaktif(df)
             else:
-                st.info("Visualisasi Peta Interaktif memuat mode cadangan bawaan. Pastikan library streamlit-folium terpasang.")
+                st.info("Peta interaktif memuat mode cadangan bawaan.")
                 st.map(df[['Latitude', 'Longitude']])
 
             # ====================================================================
-            # # 4. LOGIKA EVALUASI REKOMENDASI TATA RUANG (FORMAL & ILMIAH)
+            # # 4. LOGIKA EVALUASI REKOMENDASI TATA RUANG
             # ====================================================================
             st.markdown("---")
             st.subheader("📋 Analisis Konflik Kepentingan & Rekomendasi Kebijakan")
@@ -197,7 +215,6 @@ if uploaded_file is not None:
             
             kelas_mutu_select = st.selectbox("Pilih Klasifikasi Baku Mutu Air (PP No. 22 Tahun 2021):", ["Kelas I (Air Minum)", "Kelas II (Rekreasi Air)", "Kelas III (Budidaya)"])
             
-            # Generate dokumen PDF saat tombol diklik
             pdf_data = buat_pdf(df, kelas_mutu_select, rekomendasi_teks)
             
             st.download_button(
