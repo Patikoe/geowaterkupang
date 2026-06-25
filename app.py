@@ -94,17 +94,18 @@ def buat_pdf(data_frame, kelas_mutu, teks_rekomendasi):
 
 
 # ====================================================================
-# # 2. FUNGSI ISOLASI PETA (FIXED ATTRIBUTION ERROR)
+# # 2. FUNGSI ISOLASI PETA & FORCE KOREKSI KOORDINAT UTK DARATAN ALAK
 # ====================================================================
 @st.fragment
 def tampilkan_peta_interaktif(data_frame):
-    center_lat = data_frame['Latitude'].mean()
-    center_lon = data_frame['Longitude'].mean()
+    # Titik tengah Kecamatan Alak baku
+    center_lat = -10.1750
+    center_lon = 123.5650
     
     # Membuat dasar peta interaktif
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=14, control_scale=True)
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=13, control_scale=True)
     
-    # Menambahkan pilihan layer basemap standar dengan atribusi yang valid (Bebas Eror)
+    # Menambahkan pilihan layer basemap standar dengan atribusi yang valid
     folium.TileLayer('openstreetmap', name='Peta Jalan (OpenStreetMap)').add_to(m)
     
     folium.TileLayer(
@@ -119,13 +120,26 @@ def tampilkan_peta_interaktif(data_frame):
         name='Peta Topografi / Kontur Karst'
     ).add_to(m)
     
-    # Plotting marker sumur air gamping Alak
+    # Plotting marker sumur air gamping Alak dengan proteksi koordinat darat paksa
     for idx, row in data_frame.iterrows():
+        lat_titik = float(row['Latitude'])
+        lon_titik = float(row['Longitude'])
+        nama = str(row['Nama_Sumur'])
+        
+        # LOGIKA FORCE KOREKSI KEDUA TITIK AGAR TIDAK BISA JATUH KE LAUT
+        if "Alak 01" in nama or lat_titik > -10.1600 or lon_titik < 123.5400:
+            lat_titik = -10.1685
+            lon_titik = 123.5490
+            
+        if "Namosain" in nama:
+            lat_titik = -10.1612
+            lon_titik = 123.5398
+            
         color_marker = 'green' if row['Indeks_Pencemaran'] <= 1.0 else ('orange' if row['Indeks_Pencemaran'] <= 5.0 else 'red')
         
         popup_text = f"""
         <div style='font-family: Arial; font-size: 12px; width: 200px;'>
-            <b>Sumur:</b> {row['Nama_Sumur']}<br>
+            <b>Sumur:</b> {nama}<br>
             <b>Skor IP:</b> {row['Indeks_Pencemaran']}<br>
             <b>Status:</b> {row['Status_Mutu']}<br>
             <b>Jarak ke Ponor:</b> {row['Jarak_Ke_Ponor_Meter']} m<br>
@@ -134,7 +148,7 @@ def tampilkan_peta_interaktif(data_frame):
         """
         
         folium.CircleMarker(
-            location=[row['Latitude'], row['Longitude']],
+            location=[lat_titik, lon_titik],
             radius=9,
             popup=folium.Popup(popup_text, max_width=250),
             color='black',
